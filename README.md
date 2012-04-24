@@ -1,8 +1,6 @@
 couchbase-aspnet
 ================
 
-# Couchbase ASP.NET Library
-
 This library provides infrastructure support for using [Couchbase Server](http://couchbase.com) and ASP.NET.
 
 ## Features:
