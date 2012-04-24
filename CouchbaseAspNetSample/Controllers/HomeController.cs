@@ -14,7 +14,7 @@ namespace CouchbaseAspNetSample.Controllers
 
         public ActionResult Index()
         {
-            Session[SessionConstants.MESSAGE] = "Hello, Couchbase ASP.NET!";
+            ViewData[ViewDataConstants.MESSAGE] = "Hello, Couchbase ASP.NET!";
 
 			return View();
         }
