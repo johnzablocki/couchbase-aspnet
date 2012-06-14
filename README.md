@@ -32,9 +32,25 @@ Configure the Couchbase Client as you normally would:
 
 	<couchbase>
 		<servers bucket="default" bucketPassword="">
-		<add uri="http://127.0.0.1:8091/pools/default"/>      
+		<add uri="http://127.0.0.1:8091/pools"/>      
 		</servers>
 	</couchbase>
+
+If you would like to use a custom configuration section, you may do so by specifying a value for the "section" attribute of the provider entry (see below).
+
+    <section name="couchbaseSession" type="Couchbase.Configuration.CouchbaseClientSection, Couchbase"/>    
+
+	<couchbaseSession>
+		<servers bucket="sessionState" bucketPassword="">
+		<add uri="http://127.0.0.1:8091/pools"/>      
+		</servers>
+	</couchbaseSession>
+
+    <sessionState customProvider="Couchbase" mode="Custom">
+      <providers>
+        <add name="Couchbase" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" section="couchbaseSession" />
+      </providers>
+    </sessionState>
 
 Note that currently, code-based configuration of the CouchbaseClient is not supported.
 
