@@ -49,7 +49,7 @@ namespace Couchbase.AspNet.OutputCache
 
 		public override void Set(string key, object entry, DateTime utcExpiry)
 		{
-			var result = _client.Store(StoreMode.Set, key, entry, utcExpiry);			
+			_client.Store(StoreMode.Set, key, entry, utcExpiry);
 		}
 	}
 }
