@@ -1,18 +1,24 @@
 ﻿using System;
 using System.Collections.Specialized;
+using System.Configuration;
 using Enyim.Caching;
+using Couchbase.Configuration;
 
-namespace Couchbase.AspNet.SessionState
+namespace Couchbase.AspNet
 {
-	public interface ICouchbaseClientFactory
+	public sealed class CouchbaseClientFactory : ICouchbaseClientFactory
 	{
-		/// <summary>
-		/// Returns a memcached client. This will be called by the provider's Initialize method.
-		/// </summary>
-		/// <param name="name"></param>
-		/// <param name="config"></param>
-		/// <returns></returns>
-		IMemcachedClient Create(string name, NameValueCollection config);
+		public IMemcachedClient Create(string name, NameValueCollection config)
+		{
+			var sectionName = ProviderHelper.GetAndRemove(config, "section", false);
+			if (String.IsNullOrEmpty(sectionName))
+				return new CouchbaseClient();
+
+			var section = ConfigurationManager.GetSection(sectionName) as ICouchbaseClientConfiguration;
+			if (section == null) throw new InvalidOperationException("Invalid config section: " + section);
+
+			return new CouchbaseClient(section);
+		}
 	}
 }
 

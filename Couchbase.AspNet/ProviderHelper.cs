@@ -6,7 +6,7 @@ using System.Collections.Specialized;
 using Enyim.Reflection;
 using Enyim.Caching;
 
-namespace Couchbase.AspNet.SessionState
+namespace Couchbase.AspNet
 {
 	internal static class ProviderHelper
 	{
