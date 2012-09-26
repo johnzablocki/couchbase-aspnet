@@ -26,12 +26,12 @@ namespace Couchbase.AspNet
                 throw new System.Configuration.ConfigurationErrorsException("Unknown parameter: " + nvc.Keys[0]);
         }
 
-        public static IMemcachedClient GetClient(string name, NameValueCollection config, Func<ICouchbaseClientFactory> createDefault)
+        public static IMemcachedClient GetClient(string name, NameValueCollection config, Func<ICouchbaseClientFactory> createDefault, out bool disposeClient)
         {
             var factory = GetFactoryInstance(ProviderHelper.GetAndRemove(config, "factory", false), createDefault);
             System.Diagnostics.Debug.Assert(factory != null, "factory == null");
 
-            return factory.Create(name, config);
+            return factory.Create(name, config, out disposeClient);
         }
 
         private static ICouchbaseClientFactory GetFactoryInstance(string typeName, Func<ICouchbaseClientFactory> createDefault)

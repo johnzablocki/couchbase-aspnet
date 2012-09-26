@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.Collections.Specialized;
 using System.Web.Caching;
 using Enyim.Caching;
@@ -9,6 +10,7 @@ namespace Couchbase.AspNet.OutputCache
     public class CouchbaseOutputCacheProvider : OutputCacheProvider
     {
         private IMemcachedClient client;
+        private bool disposeClient;
         private static readonly string Prefix = (System.Web.Hosting.HostingEnvironment.SiteName ?? String.Empty).Replace(" ", "-") + "+" + System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "cache-";
 
         /// <summary>
@@ -21,20 +23,21 @@ namespace Couchbase.AspNet.OutputCache
             NameValueCollection config)
         {
             base.Initialize(name, config);
-            client = ProviderHelper.GetClient(name, config, () => (ICouchbaseClientFactory)new CouchbaseClientFactory());
+            client = ProviderHelper.GetClient(name, config, () => (ICouchbaseClientFactory)new CouchbaseClientFactory(), out disposeClient);
 
             ProviderHelper.CheckForUnknownAttributes(config);
         }
 
         /// <summary>
-        /// Function to sanitize the key for use with Couchbase
+        /// Function to sanitize the key for use with Couchbase. We simply convert it to a Base 64 representation so that it will be unique and will allow
+        /// encoding of any URL
         /// </summary>
         /// <param name="key">Key to sanitize</param>
         /// <returns>Sanitized key</returns>
         private string SanitizeKey(
             string key)
         {
-            return Prefix + key.Replace(" ", "-");
+            return Prefix + Convert.ToBase64String(Encoding.UTF8.GetBytes(key), Base64FormattingOptions.None);
         }
 
         /// <summary>

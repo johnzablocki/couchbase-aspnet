@@ -12,8 +12,9 @@ namespace Couchbase.AspNet
         /// </summary>
         /// <param name="name">Name of the section from the configuration file</param>
         /// <param name="config">Configuration section information from the config file</param>
+        /// <param name="disposeClient">True if the client should be disposed of or not</param>
         /// <returns>Instance of the couchbase client to use</returns>
-        IMemcachedClient Create(string name, NameValueCollection config);
+        IMemcachedClient Create(string name, NameValueCollection config, out bool disposeClient);
     }
 }
 

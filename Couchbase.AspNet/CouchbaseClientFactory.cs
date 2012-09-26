@@ -8,8 +8,11 @@ namespace Couchbase.AspNet
 {
     public sealed class CouchbaseClientFactory : ICouchbaseClientFactory
     {
-        public IMemcachedClient Create(string name, NameValueCollection config)
+        public IMemcachedClient Create(string name, NameValueCollection config, out bool disposeClient)
         {
+            // This client should be disposed of as it is not shared
+            disposeClient = true;
+
             // Get the section name from the configuration file. If not found, create a default Couchbase client which 
             // will get the configuration information from the default Couchbase client section in the Web.config file
             var sectionName = ProviderHelper.GetAndRemove(config, "section", false);

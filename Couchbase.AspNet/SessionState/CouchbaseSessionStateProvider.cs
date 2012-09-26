@@ -11,15 +11,16 @@ namespace Couchbase.AspNet.SessionState
 	public class CouchbaseSessionStateProvider : SessionStateStoreProviderBase
 	{
 		private IMemcachedClient client;
+        private bool disposeClient;
         private static bool exclusiveAccess;
-
+        
 		public override void Initialize(string name, System.Collections.Specialized.NameValueCollection config)
 		{
             // Initialize the base class
 			base.Initialize(name, config);
 
             // Create our Couchbase client instance
-            client = ProviderHelper.GetClient(name, config, () => (ICouchbaseClientFactory)new CouchbaseClientFactory());
+            client = ProviderHelper.GetClient(name, config, () => (ICouchbaseClientFactory)new CouchbaseClientFactory(), out disposeClient);
 
             // By default use exclusive session access. But allow it to be overridden in the config file
             var exclusive = ProviderHelper.GetAndRemove(config, "exclusiveAccess", false) ?? "true";
@@ -48,7 +49,9 @@ namespace Couchbase.AspNet.SessionState
 
 		public override void Dispose()
 		{
-            client.Dispose();
+            if (disposeClient) {
+                client.Dispose();
+            }
 		}
 
         public override void EndRequest(HttpContext context) { }

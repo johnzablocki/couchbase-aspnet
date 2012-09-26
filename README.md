@@ -13,7 +13,7 @@ ASP.NET SessionState Provider
 
 * You'll need .NET Framework 3.5 or later to use the precompiled binaries. 
 * To build the client, you'll need Visual Studio 2010 with MVC 3 installed.
-* The Nuget package for [CouchbaseNetClient 1.1.6](http://nuget.org/packages/CouchbaseNetClient) is referenced by Couchbase.AspNet
+* The Nuget package for [CouchbaseNetClient 1.0.6](http://nuget.org/packages/CouchbaseNetClient) is referenced by Couchbase.AspNet
 * Couchbase Server 1.8
 
 ## Configuring the SessionState provider
