@@ -131,3 +131,7 @@ Once configured, simply enable output cache as you already do with ASP.NET MVC
 or with ASP.NET WebForms
 
     <%@ OutputCache Duration="60" VaryByParam="foo" %>
+
+## Packaging Notes
+From the Couchbase.AspNet directory, run nuget pack as follows:
+`nuget pack .\Couchbase.AspNet.csproj`
