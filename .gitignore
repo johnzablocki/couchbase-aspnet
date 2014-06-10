@@ -1,5 +1,12 @@
-**/bin/*
-**/obj/*
-TestResults/*
+[Oo]bj/
+[Bb]in/
+packages
 *.suo
 *.user
+/TestResults
+*.vspscc
+*.vssscc
+*.vsmdi
+*.vs*
+*.testsettings
+*.sln.docstates
