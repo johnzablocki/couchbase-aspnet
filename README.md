@@ -11,10 +11,10 @@ ASP.NET SessionState Provider
 
 ## Requirements
 
-* You'll need .NET Framework 4.0 or later to use the precompiled binaries. 
-* To build the client, you'll need Visual Studio 2010 with MVC 3 installed.
-* The Nuget package for [CouchbaseNetClient 1.2.x](http://nuget.org/packages/CouchbaseNetClient) is referenced by Couchbase.AspNet
-* Couchbase Server 1.8
+* You'll need .NET Framework 4.5 or later to use the precompiled binaries. 
+* To build the client, you'll need Visual Studio > 2012 with MVC 4 to compile.
+* The Nuget package for [Couchbase.NetClient 2.0.X](http://nuget.org/packages/CouchbaseNetClient) is referenced by Couchbase.AspNet
+* Couchbase Server 2.5 or greater
 
 ## Configuring the SessionState provider
 
@@ -28,29 +28,28 @@ Update the sessionState section in Web.config as follows:
 		
 Configure the Couchbase Client as you normally would:
 
-    <section name="couchbase" type="Couchbase.Configuration.CouchbaseClientSection, Couchbase"/>	
-
-	<couchbase>
-		<servers bucket="default" bucketPassword="">
-		<add uri="http://127.0.0.1:8091/pools"/>      
-		</servers>
-	</couchbase>
-
+    <section name="couchbase-cache" type="Couchbase.Configuration.Client.Providers.CouchbaseClientSection, 	Couchbase.NetClient/>
+    <couchbase-cache>
+        <servers>
+          <add uri="http://localhost:8091"></add>
+        </servers>
+        <buckets>
+           <add name="default"></add>
+        </buckets>
+    </couchbase-cache>
+    
 If you would like to use a custom configuration section, you may do so by specifying a value for the "section" attribute of the provider entry (see below).
 
-    <section name="couchbaseSession" type="Couchbase.Configuration.CouchbaseClientSection, Couchbase"/>    
-
-	<couchbaseSession>
-		<servers bucket="sessionState" bucketPassword="">
-		<add uri="http://127.0.0.1:8091/pools"/>      
-		</servers>
-	</couchbaseSession>
-
-    <sessionState customProvider="Couchbase" mode="Custom">
-      <providers>
-        <add name="Couchbase" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" section="couchbaseSession" />
-      </providers>
-    </sessionState>
+    <section name="couchbase-session" type="Couchbase.Configuration.Client.Providers.CouchbaseClientSection, 	Couchbase.NetClient/>
+    <couchbase-session>
+        <servers>
+          <add uri="http://localhost:8091"></add>
+        </servers>
+        <buckets>
+           <add name="default"></add>
+        </buckets>
+    </couchbase-session>
+    
 
 If you would like to use a custom client factory, you may do so by specifying a value in the "factory" attribute of the provider entry. The example below sets it to the default factory, but you can replace this with your own factory class to have full control over the creation and lifecycle of the Couchbase client.
 
@@ -96,17 +95,21 @@ Update the outputCache section in Web.config as follows:
 
 Configure the Couchbase Client as you normally would:
 
-    <section name="couchbase" type="Couchbase.Configuration.CouchbaseClientSection, Couchbase"/>
+    <section name="couchbase-cache" type="Couchbase.Configuration.Client.Providers.CouchbaseClientSection, Couchbase.NetClient/>
+    <couchbase-caching>
+        <servers>
+          <add uri="http://localhost:8091"></add>
+        </servers>
+        <buckets>
+           <add name="default"></add>
+        </buckets>
+    </couchbase-caching>
 
-	<couchbase>
-		<servers bucket="default" bucketPassword="">
-			<add uri="http://127.0.0.1:8091/pools"/>
-		</servers>
-	</couchbase>
+Note that currently, the first bucket in the list will be used for session and cache.
 
 If you would like to use a custom configuration section, you may do so by specifying a value for the "section" attribute of the provider entry (see below).
 
-    <section name="couchbaseSession" type="Couchbase.Configuration.CouchbaseClientSection, Couchbase"/>
+    <section name="couchbaseSession" type="Couchbase.Configuration.Client.Providers.CouchbaseClientSection, Couchbase.NetClient"/>
 
 	<couchbaseSession>
 		<servers bucket="sessionState" bucketPassword="">
@@ -119,6 +122,15 @@ If you would like to use a custom configuration section, you may do so by specif
         <add name="Couchbase" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" section="couchbaseSession" />
       </providers>
     </outputCache>
+    
+You'll also need to make sure you have the Couchbase.ClusterHelper initialized in your Global.asax:
+
+    protected void Application_Start()
+    {
+    	ClusterHelper.Initialize("couchbase-caching");
+    	
+    	...
+    }
 
 Once configured, simply enable output cache as you already do with ASP.NET MVC
 
