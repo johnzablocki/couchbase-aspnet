@@ -7,6 +7,7 @@ This library provides infrastructure support for using [Couchbase Server](http:/
 
 ASP.NET SessionState Provider
 
+* Updated to Couchbase .NET SDK 2.0!
 * Port of the [Enyim Memcached Provider](https://github.com/enyim/memcached-providers) to Couchbase Server
 
 ## Requirements
