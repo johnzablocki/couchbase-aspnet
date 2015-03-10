@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Specialized;
-using Enyim.Reflection;
-using Enyim.Caching;
+using Couchbase.Core;
 
 namespace Couchbase.AspNet
 {
@@ -26,7 +25,7 @@ namespace Couchbase.AspNet
                 throw new System.Configuration.ConfigurationErrorsException("Unknown parameter: " + nvc.Keys[0]);
         }
 
-        public static IMemcachedClient GetClient(string name, NameValueCollection config, Func<ICouchbaseClientFactory> createDefault, out bool disposeClient)
+        public static IBucket GetClient(string name, NameValueCollection config, Func<ICouchbaseClientFactory> createDefault, out bool disposeClient)
         {
             var factory = GetFactoryInstance(ProviderHelper.GetAndRemove(config, "factory", false), createDefault);
             System.Diagnostics.Debug.Assert(factory != null, "factory == null");
@@ -46,7 +45,7 @@ namespace Couchbase.AspNet
             if (!typeof(ICouchbaseClientFactory).IsAssignableFrom(type))
                 throw new System.Configuration.ConfigurationErrorsException("Type '" + typeName + "' must implement IMemcachedClientFactory");
 
-            return FastActivator.Create(type) as ICouchbaseClientFactory;
+            return (ICouchbaseClientFactory )Activator.CreateInstance(type);
         }
 
     }
