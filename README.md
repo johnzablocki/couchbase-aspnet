@@ -1,4 +1,4 @@
-couchbase-aspnet
+couchbase-aspnet 2.0
 ================
 
 This library provides infrastructure support for using [Couchbase Server](http://couchbase.com) and ASP.NET.
