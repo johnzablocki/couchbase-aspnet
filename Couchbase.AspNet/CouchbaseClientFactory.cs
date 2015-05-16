@@ -30,14 +30,10 @@ namespace Couchbase.AspNet
 		private IMemcachedClient CreateClient(object config)
 		{
 			if (config != null && config.GetType() == typeof (ICouchbaseClientConfiguration))
-			{
 				return new CouchbaseClient(config as ICouchbaseClientConfiguration);
-			}
 
 			if (config != null && config.GetType() == typeof(IMemcachedClientConfiguration))
-			{
 				return new MemcachedClient(config as IMemcachedClientConfiguration);
-			}
 
 			return new CouchbaseClient();
 		}
