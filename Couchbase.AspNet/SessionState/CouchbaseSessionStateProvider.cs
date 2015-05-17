@@ -16,6 +16,23 @@ namespace Couchbase.AspNet.SessionState
         private static bool _exclusiveAccess;
 
         /// <summary>
+        /// Defines the prefix for header data in the Couchbase bucket. Must be unique to ensure it does not conflict with 
+        /// other applications that might be using the Couchbase bucket.
+        /// </summary>
+        private static string _headerPrefix =
+            (System.Web.Hosting.HostingEnvironment.SiteName ?? string.Empty).Replace(" ", "-") + "+" +
+            System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "info-";
+
+        /// <summary>
+        /// Defines the prefix for the actual session store data stored in the Couchbase bucket. Must also be unique for
+        /// the same reasons outlined above.
+        /// </summary>
+        private static string _dataPrefix =
+            (System.Web.Hosting.HostingEnvironment.SiteName ?? string.Empty).Replace(" ", "-") + "+" +
+            System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "data-";
+
+
+        /// <summary>
         /// Function to initialize the provider
         /// </summary>
         /// <param name="name">Name of the element in the configuration file</param>
@@ -33,6 +50,16 @@ namespace Couchbase.AspNet.SessionState
             // By default use exclusive session access. But allow it to be overridden in the config file
             var exclusive = ProviderHelper.GetAndRemove(config, "exclusiveAccess", false) ?? "true";
             _exclusiveAccess = (string.Compare(exclusive, "true", StringComparison.OrdinalIgnoreCase) == 0);
+
+            // Allow optional header and data prefixes to be used for this application
+            var headerPrefix = ProviderHelper.GetAndRemove(config, "headerPrefix", false);
+            if (headerPrefix != null) {
+                _headerPrefix = headerPrefix;
+            }
+            var dataPrefix = ProviderHelper.GetAndRemove(config, "dataPrefix", false);
+            if (dataPrefix != null) {
+                _dataPrefix = dataPrefix;
+            }
 
             // Make sure no extra attributes are included
             ProviderHelper.CheckForUnknownAttributes(config);
@@ -357,22 +384,6 @@ namespace Couchbase.AspNet.SessionState
         /// </summary>
         public class SessionStateItem
         {
-            /// <summary>
-            /// Defines the prefix for header data in the Couchbase bucket. Must be unique to ensure it does not conflict with 
-            /// other applications that might be using the Couchbase bucket.
-            /// </summary>
-            private static readonly string _headerPrefix =
-                (System.Web.Hosting.HostingEnvironment.SiteName ?? string.Empty).Replace(" ", "-") + "+" +
-                System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "info-";
-
-            /// <summary>
-            /// Defines the prefix for the actual session store data stored in the Couchbase bucket. Must also be unique for
-            /// the same reasons outlined above.
-            /// </summary>
-            private static readonly string _dataPrefix =
-                (System.Web.Hosting.HostingEnvironment.SiteName ?? string.Empty).Replace(" ", "-") + "+" +
-                System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "data-";
-
             public SessionStateItemCollection Data;
             public SessionStateActions Flag;
             public ulong LockId;

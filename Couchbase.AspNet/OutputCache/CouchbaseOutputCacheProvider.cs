@@ -16,7 +16,7 @@ namespace Couchbase.AspNet.OutputCache
         /// Defines the prefix for the actual cache data stored in the Couchbase bucket. Must be unique to ensure it does not conflict with 
         /// other applications that might be using the Couchbase bucket.
         /// </summary>
-        private static readonly string _prefix =
+        private static string _prefix =
             (System.Web.Hosting.HostingEnvironment.SiteName ?? string.Empty).Replace(" ", "-") + "+" +
             System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "cache-";
 
@@ -34,6 +34,12 @@ namespace Couchbase.AspNet.OutputCache
 
             // Create our Couchbase bucket instance
             _bucket = ProviderHelper.GetBucket(name, config);
+
+            // Allow optional prefix to be used for this application
+            var prefix = ProviderHelper.GetAndRemove(config, "prefix", false);
+            if (prefix != null) {
+                _prefix = prefix;
+            }
 
             // Make sure no extra attributes are included
             ProviderHelper.CheckForUnknownAttributes(config);

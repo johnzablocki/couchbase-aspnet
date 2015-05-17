@@ -58,6 +58,14 @@ If you would like to use a different bucket than the default one, you may do so 
       </providers>
     </sessionState>
 
+If you would like to control the prefixes used to store data in the Couchbase bucket, you can change the default values (which are based on the application name and virtual path) with your own custom values. This will allow you to share session data between applications if you so desire.
+
+    <sessionState customProvider="Couchbase" mode="Custom">
+      <providers>
+        <add name="Couchbase" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" headerPrefix="header-" dataPrefix ="data-" />
+      </providers>
+    </sessionState>
+
 If you would like to use a custom bucket factory, you may do so by specifying a value in the "factory" attribute of the provider entry. The example below sets it to the default factory, but you can replace this with your own factory class to have full control over the creation and lifecycle of the Couchbase client.
 
     <sessionState customProvider="Couchbase" mode="Custom">
@@ -115,6 +123,14 @@ If you would like to use a different bucket than the default one, you may do so 
       <outputCache defaultProvider="CouchbaseCache">
         <providers>
           <add name="CouchbaseCache" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" bucket="my-bucket" />
+        </providers>
+      </outputCache>
+
+If you would like to control the prefix used to store data in the Couchbase bucket, you can change the default values (which are based on the application name and virtual path) with your own custom value. This will allow you to share cache data between applications if you so desire.
+
+      <outputCache defaultProvider="CouchbaseCache">
+        <providers>
+          <add name="CouchbaseCache" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" prefix="cache-" />
         </providers>
       </outputCache>
 
