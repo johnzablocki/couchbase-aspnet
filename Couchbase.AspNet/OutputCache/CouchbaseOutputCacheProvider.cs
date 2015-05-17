@@ -5,7 +5,6 @@ using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Web.Caching;
 using Couchbase.Core;
-using Couchbase.IO;
 
 namespace Couchbase.AspNet.OutputCache
 {
@@ -76,7 +75,8 @@ namespace Couchbase.AspNet.OutputCache
 
             // If the item got evicted between the Add and the Get (very rare) we store it anyway, 
             // but this time with Set to make sure it always gets into the cache
-            if (retval == null) {
+            if (retval == null)
+            {
                 client.Insert(key, entry, utcExpiry.TimeOfDay);
                 retval = entry;
             }
@@ -123,7 +123,13 @@ namespace Couchbase.AspNet.OutputCache
             client.Insert(SanitizeKey(key), Serialize(entry), DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay);
         }
 
-        byte[] Serialize(object value)
+        /// <summary>
+        /// Serializes the object to a byte array
+        /// </summary>
+        /// <param name="value">Object value to seralize</param>
+        /// <returns>Value as a byte array</returns>
+        private byte[] Serialize(
+            object value)
         {
             using (var ms = new MemoryStream())
             {
@@ -132,7 +138,13 @@ namespace Couchbase.AspNet.OutputCache
             }
         }
 
-        object DeSerialize(byte[] bytes)
+        /// <summary>
+        /// Deserializes a byte array to an object
+        /// </summary>
+        /// <param name="bytes">Bytes to deserialize</param>
+        /// <returns>Object that was deserialized</returns>
+        private object DeSerialize(
+            byte[] bytes)
         {
             if (bytes == null)
             {
@@ -144,7 +156,6 @@ namespace Couchbase.AspNet.OutputCache
             }
         }
     }
-
 }
 
 #region [ License information          ]
