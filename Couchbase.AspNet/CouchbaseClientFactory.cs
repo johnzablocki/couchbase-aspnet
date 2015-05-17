@@ -1,5 +1,4 @@
 ﻿using System.Collections.Specialized;
-using System.Configuration;
 using Couchbase.Core;
 
 namespace Couchbase.AspNet
@@ -11,11 +10,13 @@ namespace Couchbase.AspNet
             // This client should be disposed of as it is not shared
             disposeClient = true;
 
-            // Get the bucket name to use from the configuration file
+            // Get the bucket name to use from the configuration file and use a specific bucket if specified
             var bucketName = ProviderHelper.GetAndRemove(config, "bucket", false);
-	        if (string.IsNullOrEmpty(bucketName))
-                throw new ConfigurationErrorsException("CouchbaseClientFactory could not find the 'bucket' name.");
-            return ClusterHelper.GetBucket(bucketName);
+	        if (!string.IsNullOrEmpty(bucketName))
+                return ClusterHelper.GetBucket(bucketName);
+
+            // If no bucket is specified, simply use the default bucket (which will be the first in the list)
+            return ClusterHelper.Get().OpenBucket();
         }
     }
 }
