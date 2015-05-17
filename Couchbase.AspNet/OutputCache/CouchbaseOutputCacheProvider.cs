@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Text;
 using System.Collections.Specialized;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Web.Caching;
-using Enyim.Caching;
-using Enyim.Caching.Memcached;
+using Couchbase.Core;
 
 namespace Couchbase.AspNet.OutputCache
 {
     public class CouchbaseOutputCacheProvider : OutputCacheProvider
     {
-        private IMemcachedClient client;
+        private IBucket client;
         private bool disposeClient;
         private static readonly string Prefix = (System.Web.Hosting.HostingEnvironment.SiteName ?? String.Empty).Replace(" ", "-") + "+" + System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "cache-";
 
@@ -66,16 +67,17 @@ namespace Couchbase.AspNet.OutputCache
 
             // We should only store the item if it's not in the cache. So try to add it and if it 
             // succeeds, return the value we just stored
-            if (client.Store(StoreMode.Add, key, entry, utcExpiry))
+            if (client.Insert(key, Serialize(entry), utcExpiry.TimeOfDay).Success)
                 return entry;
 
             // If it's in the cache we should return it
-            var retval = client.Get(key);
+            var retval = DeSerialize(client.Get<byte[]>(key).Value);
 
             // If the item got evicted between the Add and the Get (very rare) we store it anyway, 
             // but this time with Set to make sure it always gets into the cache
-            if (retval == null) {
-                client.Store(StoreMode.Set, key, entry, utcExpiry);
+            if (retval == null)
+            {
+                client.Insert(key, entry, utcExpiry.TimeOfDay);
                 retval = entry;
             }
 
@@ -93,7 +95,8 @@ namespace Couchbase.AspNet.OutputCache
         public override object Get(
             string key)
         {
-            return client.Get(SanitizeKey(key));
+            var result = client.Get<byte[]>(SanitizeKey(key));
+            return DeSerialize(result.Value);
         }
 
         /// <summary>
@@ -117,10 +120,42 @@ namespace Couchbase.AspNet.OutputCache
             object entry,
             DateTime utcExpiry)
         {
-            client.Store(StoreMode.Set, SanitizeKey(key), entry, DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc));
+            client.Insert(SanitizeKey(key), Serialize(entry), DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay);
+        }
+
+        /// <summary>
+        /// Serializes the object to a byte array
+        /// </summary>
+        /// <param name="value">Object value to seralize</param>
+        /// <returns>Value as a byte array</returns>
+        private byte[] Serialize(
+            object value)
+        {
+            using (var ms = new MemoryStream())
+            {
+                new BinaryFormatter().Serialize(ms, value);
+                return ms.ToArray();
+            }
+        }
+
+        /// <summary>
+        /// Deserializes a byte array to an object
+        /// </summary>
+        /// <param name="bytes">Bytes to deserialize</param>
+        /// <returns>Object that was deserialized</returns>
+        private object DeSerialize(
+            byte[] bytes)
+        {
+            if (bytes == null)
+            {
+                return null;
+            }
+            using (var ms = new MemoryStream(bytes))
+            {
+                return new BinaryFormatter().Deserialize(ms);
+            }
         }
     }
-
 }
 
 #region [ License information          ]

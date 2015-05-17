@@ -1,42 +1,23 @@
-﻿using System;
-using System.Collections.Specialized;
-using System.Configuration;
-using Enyim.Caching;
-using Couchbase.Configuration;
-using Enyim.Caching.Configuration;
+﻿using System.Collections.Specialized;
+using Couchbase.Core;
 
 namespace Couchbase.AspNet
 {
 	public sealed class CouchbaseClientFactory : ICouchbaseClientFactory
     {
-        public IMemcachedClient Create(string name, NameValueCollection config, out bool disposeClient)
+        public IBucket Create(string name, NameValueCollection config, out bool disposeClient)
         {
             // This client should be disposed of as it is not shared
             disposeClient = true;
-		
-            // Get the section name from the configuration file. If not found, create a default Couchbase client which 
-            // will get the configuration information from the default Couchbase client section in the Web.config file
-            var sectionName = ProviderHelper.GetAndRemove(config, "section", false);
-	        if (String.IsNullOrEmpty(sectionName))
-				return this.CreateClient(null);
 
-            // If a custom section name is passed in, get the section information and use it to construct the Couchbase client
-            var section = ConfigurationManager.GetSection(sectionName);
-            if (section == null)
-				throw new InvalidOperationException("Invalid config section: " + sectionName);
-			return CreateClient(section);
+            // Get the bucket name to use from the configuration file and use a specific bucket if specified
+            var bucketName = ProviderHelper.GetAndRemove(config, "bucket", false);
+	        if (!string.IsNullOrEmpty(bucketName))
+                return ClusterHelper.GetBucket(bucketName);
+
+            // If no bucket is specified, simply use the default bucket (which will be the first in the list)
+            return ClusterHelper.Get().OpenBucket();
         }
-
-		private IMemcachedClient CreateClient(object config)
-		{
-			if (config != null && config.GetType() == typeof (ICouchbaseClientConfiguration))
-				return new CouchbaseClient(config as ICouchbaseClientConfiguration);
-
-			if (config != null && config.GetType() == typeof(IMemcachedClientConfiguration))
-				return new MemcachedClient(config as IMemcachedClientConfiguration);
-
-			return new CouchbaseClient();
-		}
     }
 }
 

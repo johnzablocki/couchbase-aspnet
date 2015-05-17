@@ -3,17 +3,17 @@ using System.Web.SessionState;
 using System.Web;
 using System.IO;
 using System.Web.UI;
-using Enyim.Caching;
-using Enyim.Caching.Memcached;
+using Couchbase.Core;
+using Couchbase.IO;
 
 namespace Couchbase.AspNet.SessionState
 {
 	public class CouchbaseSessionStateProvider : SessionStateStoreProviderBase
 	{
-		private IMemcachedClient client;
+		private IBucket client;
         private bool disposeClient;
         private static bool exclusiveAccess;
-        
+
 		public override void Initialize(string name, System.Collections.Specialized.NameValueCollection config)
 		{
             // Initialize the base class
@@ -74,7 +74,7 @@ namespace Couchbase.AspNet.SessionState
                     : e.ToStoreData(context);
         }
 
-        public static SessionStateItem Get(IMemcachedClient client, HttpContext context, bool acquireLock, string id, out bool locked, out TimeSpan lockAge, out object lockId, out SessionStateActions actions)
+        public static SessionStateItem Get(IBucket client, HttpContext context, bool acquireLock, string id, out bool locked, out TimeSpan lockAge, out object lockId, out SessionStateActions actions)
         {
             locked = false;
             lockId = null;
@@ -242,7 +242,7 @@ namespace Couchbase.AspNet.SessionState
                 new ObjectStateFormatter().Serialize(ms, p);
             }
 
-            public bool Save(IMemcachedClient client, string id, bool metaOnly, bool useCas)
+            public bool Save(IBucket client, string id, bool metaOnly, bool useCas)
             {
                 using (var ms = new MemoryStream()) {
                     // Save the header first
@@ -250,10 +250,11 @@ namespace Couchbase.AspNet.SessionState
                     var ts = TimeSpan.FromMinutes(Timeout);
 
                     // Attempt to save the header and fail if the CAS fails
-                    bool retval = useCas
-                        ? client.Cas(StoreMode.Set, HeaderPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int)ms.Length), ts, HeadCas).Result
-                        : client.Store(StoreMode.Set, HeaderPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int)ms.Length), ts);
-                    if (retval == false) {
+                    var retval = useCas
+                        ? client.Upsert(HeaderPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int) ms.Length), HeadCas, ts)
+                        : client.Upsert(HeaderPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int) ms.Length), ts);
+
+                    if (!retval.Success) {
                         return false;
                     }
 
@@ -267,13 +268,13 @@ namespace Couchbase.AspNet.SessionState
 
                             // Attempt to save the data and fail if the CAS fails
                             retval = useCas
-                                ? client.Cas(StoreMode.Set, DataPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int)ms.Length), ts, DataCas).Result
-                                : client.Store(StoreMode.Set, DataPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int)ms.Length), ts);
+                                ? client.Upsert(DataPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int)ms.Length), DataCas, ts)
+                                : client.Upsert(DataPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int)ms.Length), ts);
                         }
                     }
 
                     // Return the success of the operation
-                    return retval;
+                    return retval.Success;
                 }
             }
 
@@ -300,22 +301,22 @@ namespace Couchbase.AspNet.SessionState
                 return retval;
             }
 
-            public static SessionStateItem Load(IMemcachedClient client, string id, bool metaOnly)
+            public static SessionStateItem Load(IBucket client, string id, bool metaOnly)
             {
                 return Load(HeaderPrefix, DataPrefix, client, id, metaOnly);
             }
 
-            public static SessionStateItem Load(string headerPrefix, string dataPrefix, IMemcachedClient client, string id, bool metaOnly)
+            public static SessionStateItem Load(string headerPrefix, string dataPrefix, IBucket client, string id, bool metaOnly)
             {
-                // Load the header for the item 
-                var header = client.GetWithCas<byte[]>(headerPrefix + id);
-                if (header.Result == null) {
+                // Load the header for the item
+                var header = client.Get<byte[]>(headerPrefix + id);
+                if (header.Status == ResponseStatus.KeyNotFound) {
                     return null;
                 }
 
                 // Deserialize the header values
                 SessionStateItem entry;
-                using (var ms = new MemoryStream(header.Result)) {
+                using (var ms = new MemoryStream(header.Value)) {
                     entry = SessionStateItem.LoadItem(ms);
                 }
                 entry.HeadCas = header.Cas;
@@ -326,14 +327,14 @@ namespace Couchbase.AspNet.SessionState
                 }
 
                 // Load the data for the item
-                var data = client.GetWithCas<byte[]>(dataPrefix + id);
-                if (data.Result == null) {
+                var data = client.Get<byte[]>(dataPrefix + id);
+                if (data.Value == null) {
                     return null;
                 }
                 entry.DataCas = data.Cas;
 
                 // Deserialize the data
-                using (var ms = new MemoryStream(data.Result)) {
+                using (var ms = new MemoryStream(data.Value)) {
                     using (var br = new BinaryReader(ms)) {
                         entry.Data = SessionStateItemCollection.Deserialize(br);
                     }
@@ -348,7 +349,7 @@ namespace Couchbase.AspNet.SessionState
                 return new SessionStateStoreData(Data, SessionStateUtility.GetSessionStaticObjects(context), Timeout);
             }
 
-            public static void Remove(IMemcachedClient client, string id)
+            public static void Remove(IBucket client, string id)
             {
                 client.Remove(DataPrefix + id);
                 client.Remove(HeaderPrefix + id);

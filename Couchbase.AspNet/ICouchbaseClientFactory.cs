@@ -1,5 +1,5 @@
 ﻿using System.Collections.Specialized;
-using Enyim.Caching;
+using Couchbase.Core;
 
 namespace Couchbase.AspNet
 {
@@ -14,7 +14,7 @@ namespace Couchbase.AspNet
         /// <param name="config">Configuration section information from the config file</param>
         /// <param name="disposeClient">True if the client should be disposed of or not</param>
         /// <returns>Instance of the couchbase client to use</returns>
-        IMemcachedClient Create(string name, NameValueCollection config, out bool disposeClient);
+        IBucket Create(string name, NameValueCollection config, out bool disposeClient);
     }
 }
 
