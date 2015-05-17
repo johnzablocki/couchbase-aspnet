@@ -10,9 +10,15 @@ namespace Couchbase.AspNet.OutputCache
 {
     public class CouchbaseOutputCacheProvider : OutputCacheProvider
     {
-        private IBucket client;
-        private bool disposeClient;
-        private static readonly string Prefix = (System.Web.Hosting.HostingEnvironment.SiteName ?? String.Empty).Replace(" ", "-") + "+" + System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "cache-";
+        private IBucket _bucket;
+
+        /// <summary>
+        /// Defines the prefix for the actual cache data stored in the Couchbase bucket. Must be unique to ensure it does not conflict with 
+        /// other applications that might be using the Couchbase bucket.
+        /// </summary>
+        private static readonly string _prefix =
+            (System.Web.Hosting.HostingEnvironment.SiteName ?? string.Empty).Replace(" ", "-") + "+" +
+            System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "cache-";
 
         /// <summary>
         /// Function to initialize the provider
@@ -23,9 +29,13 @@ namespace Couchbase.AspNet.OutputCache
             string name,
             NameValueCollection config)
         {
+            // Initialize the base class
             base.Initialize(name, config);
-            client = ProviderHelper.GetClient(name, config, () => (ICouchbaseClientFactory)new CouchbaseClientFactory(), out disposeClient);
 
+            // Create our Couchbase bucket instance
+            _bucket = ProviderHelper.GetBucket(name, config);
+
+            // Make sure no extra attributes are included
             ProviderHelper.CheckForUnknownAttributes(config);
         }
 
@@ -35,10 +45,10 @@ namespace Couchbase.AspNet.OutputCache
         /// </summary>
         /// <param name="key">Key to sanitize</param>
         /// <returns>Sanitized key</returns>
-        private string SanitizeKey(
+        private static string SanitizeKey(
             string key)
         {
-            return Prefix + Convert.ToBase64String(Encoding.UTF8.GetBytes(key), Base64FormattingOptions.None);
+            return _prefix + Convert.ToBase64String(Encoding.UTF8.GetBytes(key), Base64FormattingOptions.None);
         }
 
         /// <summary>
@@ -75,17 +85,16 @@ namespace Couchbase.AspNet.OutputCache
             // We should only store the item if it's not in the cache. So try to add it and if it 
             // succeeds, return the value we just stored
             var expiration = ToExpiration(utcExpiry);
-            if (client.Insert(key, Serialize(entry), expiration).Success)
+            if (_bucket.Insert(key, Serialize(entry), expiration).Success)
                 return entry;
 
             // If it's in the cache we should return it
-            var retval = DeSerialize(client.Get<byte[]>(key).Value);
+            var retval = DeSerialize(_bucket.Get<byte[]>(key).Value);
 
             // If the item got evicted between the Add and the Get (very rare) we store it anyway, 
             // but this time with Set to make sure it always gets into the cache
-            if (retval == null)
-            {
-                client.Insert(key, entry, expiration);
+            if (retval == null) {
+                _bucket.Insert(key, entry, expiration);
                 retval = entry;
             }
 
@@ -103,7 +112,7 @@ namespace Couchbase.AspNet.OutputCache
         public override object Get(
             string key)
         {
-            var result = client.Get<byte[]>(SanitizeKey(key));
+            var result = _bucket.Get<byte[]>(SanitizeKey(key));
             return DeSerialize(result.Value);
         }
 
@@ -114,7 +123,7 @@ namespace Couchbase.AspNet.OutputCache
         public override void Remove(
             string key)
         {
-            client.Remove(SanitizeKey(key));
+            _bucket.Remove(SanitizeKey(key));
         }
 
         /// <summary>
@@ -128,7 +137,7 @@ namespace Couchbase.AspNet.OutputCache
             object entry,
             DateTime utcExpiry)
         {
-            client.Insert(SanitizeKey(key), Serialize(entry), ToExpiration(utcExpiry));
+            _bucket.Insert(SanitizeKey(key), Serialize(entry), ToExpiration(utcExpiry));
         }
 
         /// <summary>
@@ -139,8 +148,7 @@ namespace Couchbase.AspNet.OutputCache
         private byte[] Serialize(
             object value)
         {
-            using (var ms = new MemoryStream())
-            {
+            using (var ms = new MemoryStream()) {
                 new BinaryFormatter().Serialize(ms, value);
                 return ms.ToArray();
             }
@@ -154,12 +162,10 @@ namespace Couchbase.AspNet.OutputCache
         private object DeSerialize(
             byte[] bytes)
         {
-            if (bytes == null)
-            {
+            if (bytes == null) {
                 return null;
             }
-            using (var ms = new MemoryStream(bytes))
-            {
+            using (var ms = new MemoryStream(bytes)) {
                 return new BinaryFormatter().Deserialize(ms);
             }
         }
@@ -173,6 +179,7 @@ namespace Couchbase.AspNet.OutputCache
  *    @copyright 2012 Couchbase, Inc.
  *    @copyright 2012 Attila Kiskó, enyim.com
  *    @copyright 2012 Good Time Hobbies, Inc.
+ *    @copyright 2015 AMain.com, Inc.
  *    
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.

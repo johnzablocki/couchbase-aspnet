@@ -70,9 +70,9 @@
   <ItemGroup>
     <Compile Include="OutputCache\CouchbaseOutputCacheProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="CouchbaseClientFactory.cs" />
+    <Compile Include="CouchbaseBucketFactory.cs" />
     <Compile Include="SessionState\CouchbaseSessionStateProvider.cs" />
-    <Compile Include="ICouchbaseClientFactory.cs" />
+    <Compile Include="ICouchbaseBucketFactory.cs" />
     <Compile Include="ProviderHelper.cs" />
     <Compile Include="Web\CouchbaseHttpApplication.cs" />
   </ItemGroup>

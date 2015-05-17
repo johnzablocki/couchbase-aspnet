@@ -58,11 +58,11 @@ If you would like to use a different bucket than the default one, you may do so 
       </providers>
     </sessionState>
 
-If you would like to use a custom client factory, you may do so by specifying a value in the "factory" attribute of the provider entry. The example below sets it to the default factory, but you can replace this with your own factory class to have full control over the creation and lifecycle of the Couchbase client.
+If you would like to use a custom bucket factory, you may do so by specifying a value in the "factory" attribute of the provider entry. The example below sets it to the default factory, but you can replace this with your own factory class to have full control over the creation and lifecycle of the Couchbase client.
 
     <sessionState customProvider="Couchbase" mode="Custom">
       <providers>
-        <add name="Couchbase" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" factory="Couchbase.AspNet.CouchbaseClientFactory" />
+        <add name="Couchbase" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" factory="Couchbase.AspNet.CouchbaseBucketFactory" />
       </providers>
     </sessionState>
 
@@ -115,6 +115,14 @@ If you would like to use a different bucket than the default one, you may do so 
       <outputCache defaultProvider="CouchbaseCache">
         <providers>
           <add name="CouchbaseCache" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" bucket="my-bucket" />
+        </providers>
+      </outputCache>
+
+If you would like to use a custom bucket factory, you may do so by specifying a value in the "factory" attribute of the provider entry. The example below sets it to the default factory, but you can replace this with your own factory class to have full control over the creation and lifecycle of the Couchbase client.
+
+      <outputCache defaultProvider="CouchbaseCache">
+        <providers>
+          <add name="CouchbaseCache" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" factory="Couchbase.AspNet.CouchbaseBucketFactory" />
         </providers>
       </outputCache>
 
