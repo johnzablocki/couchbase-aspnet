@@ -489,6 +489,29 @@ namespace Couchbase.AspNet.SessionState
                 string id,
                 bool metaOnly)
             {
+                return Load(_headerPrefix, _dataPrefix, bucket, id, metaOnly);
+            }
+
+            /// <summary>
+            /// Loads a session state item from the bucket. This function is publicly accessible
+            /// so that you have direct access to session data from another application if necesssary.
+            /// We use this so our front end code can determine if an employee is logged into our back
+            /// end application to give them special permissions, without the session data being actually common
+            /// between the two applications.
+            /// </summary>
+            /// <param name="headerPrefix">Prefix for the header data</param>
+            /// <param name="dataPrefix">Prefix for the real data</param>
+            /// <param name="bucket">Couchbase bucket to load from</param>
+            /// <param name="id">Session ID</param>
+            /// <param name="metaOnly">True to load only meta data</param>
+            /// <returns>Session store item read, null on failure</returns>
+            public static SessionStateItem Load(
+                string headerPrefix,
+                string dataPrefix,
+                IBucket bucket,
+                string id,
+                bool metaOnly)
+            {
                 // Read the header value from Couchbase
                 var header = bucket.Get<byte[]>(_headerPrefix + id);
                 if (header.Status == ResponseStatus.KeyNotFound) {
