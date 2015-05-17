@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.Web.SessionState;
 using System.Web;
 using System.IO;
+using System.Linq;
 using System.Web.UI;
 using Couchbase.Core;
 using Couchbase.IO;
@@ -423,8 +424,8 @@ namespace Couchbase.AspNet.SessionState
 
                     // Attempt to write the header and fail if the CAS fails
                     var retval = useCas
-                        ? bucket.Upsert(_headerPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int)ms.Length), HeadCas, ts)
-                        : bucket.Upsert(_headerPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int)ms.Length), ts);
+                        ? bucket.Upsert(_headerPrefix + id, ms.ToArray(), HeadCas, ts)
+                        : bucket.Upsert(_headerPrefix + id, ms.ToArray(), ts);
                     if (!retval.Success)
                         return false;
 
@@ -437,8 +438,8 @@ namespace Couchbase.AspNet.SessionState
 
                             // Attempt to save the data and fail if the CAS fails
                             retval = useCas
-                                ? bucket.Upsert(_dataPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int)ms.Length), DataCas, ts)
-                                : bucket.Upsert(_dataPrefix + id, new ArraySegment<byte>(ms.GetBuffer(), 0, (int)ms.Length), ts);
+                                ? bucket.Upsert(_dataPrefix + id, ms.ToArray(), DataCas, ts)
+                                : bucket.Upsert(_dataPrefix + id, ms.ToArray(), ts);
                         }
                     }
 
