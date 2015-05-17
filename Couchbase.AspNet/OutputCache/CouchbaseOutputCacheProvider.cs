@@ -42,6 +42,17 @@ namespace Couchbase.AspNet.OutputCache
         }
 
         /// <summary>
+        /// Convert a UTC expiration date/time value into a timespan
+        /// </summary>
+        /// <param name="utcExpiry">The time and date on which the cached entry expires</param>
+        /// <returns>Timespan relative to the current time</returns>
+        private static uint ToExpiration(
+            DateTime utcExpiry)
+        {
+            return (uint)(DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc) - DateTime.UtcNow).TotalSeconds;
+        }
+
+        /// <summary>
         /// Function to add a new item to the output cache. If there is already a value in the cache for the 
         /// specified key, the provider must return that value and must not store the data passed by using the Add method 
         /// parameters. The Add method stores the data if it is not already in the cache and returns the value
@@ -61,13 +72,10 @@ namespace Couchbase.AspNet.OutputCache
             // Fix the key
             key = SanitizeKey(key);
 
-            // Make sure that the expiration date is flagged as UTC. The client converts the expiration to 
-            // UTC to calculate the UNIX time and this way we can skip the UTC -> ToLocal -> ToUTC chain
-            utcExpiry = DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc);
-
             // We should only store the item if it's not in the cache. So try to add it and if it 
             // succeeds, return the value we just stored
-            if (client.Insert(key, Serialize(entry), utcExpiry.TimeOfDay).Success)
+            var expiration = ToExpiration(utcExpiry);
+            if (client.Insert(key, Serialize(entry), expiration).Success)
                 return entry;
 
             // If it's in the cache we should return it
@@ -77,7 +85,7 @@ namespace Couchbase.AspNet.OutputCache
             // but this time with Set to make sure it always gets into the cache
             if (retval == null)
             {
-                client.Insert(key, entry, utcExpiry.TimeOfDay);
+                client.Insert(key, entry, expiration);
                 retval = entry;
             }
 
@@ -120,7 +128,7 @@ namespace Couchbase.AspNet.OutputCache
             object entry,
             DateTime utcExpiry)
         {
-            client.Insert(SanitizeKey(key), Serialize(entry), DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay);
+            client.Insert(SanitizeKey(key), Serialize(entry), ToExpiration(utcExpiry));
         }
 
         /// <summary>
