@@ -1,17 +1,24 @@
 ﻿using System;
 using System.Text;
 using System.Collections.Specialized;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Web.Caching;
-using Enyim.Caching;
-using Enyim.Caching.Memcached;
+using Couchbase.Core;
 
 namespace Couchbase.AspNet.OutputCache
 {
     public class CouchbaseOutputCacheProvider : OutputCacheProvider
     {
-        private IMemcachedClient client;
-        private bool disposeClient;
-        private static readonly string Prefix = (System.Web.Hosting.HostingEnvironment.SiteName ?? String.Empty).Replace(" ", "-") + "+" + System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "cache-";
+        private IBucket _bucket;
+
+        /// <summary>
+        /// Defines the prefix for the actual cache data stored in the Couchbase bucket. Must be unique to ensure it does not conflict with 
+        /// other applications that might be using the Couchbase bucket.
+        /// </summary>
+        private static string _prefix =
+            (System.Web.Hosting.HostingEnvironment.SiteName ?? string.Empty).Replace(" ", "-") + "+" +
+            System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "cache-";
 
         /// <summary>
         /// Function to initialize the provider
@@ -22,9 +29,19 @@ namespace Couchbase.AspNet.OutputCache
             string name,
             NameValueCollection config)
         {
+            // Initialize the base class
             base.Initialize(name, config);
-            client = ProviderHelper.GetClient(name, config, () => (ICouchbaseClientFactory)new CouchbaseClientFactory(), out disposeClient);
 
+            // Create our Couchbase bucket instance
+            _bucket = ProviderHelper.GetBucket(name, config);
+
+            // Allow optional prefix to be used for this application
+            var prefix = ProviderHelper.GetAndRemove(config, "prefix", false);
+            if (prefix != null) {
+                _prefix = prefix;
+            }
+
+            // Make sure no extra attributes are included
             ProviderHelper.CheckForUnknownAttributes(config);
         }
 
@@ -34,10 +51,21 @@ namespace Couchbase.AspNet.OutputCache
         /// </summary>
         /// <param name="key">Key to sanitize</param>
         /// <returns>Sanitized key</returns>
-        private string SanitizeKey(
+        private static string SanitizeKey(
             string key)
         {
-            return Prefix + Convert.ToBase64String(Encoding.UTF8.GetBytes(key), Base64FormattingOptions.None);
+            return _prefix + Convert.ToBase64String(Encoding.UTF8.GetBytes(key), Base64FormattingOptions.None);
+        }
+
+        /// <summary>
+        /// Convert a UTC expiration date/time value into a timespan
+        /// </summary>
+        /// <param name="utcExpiry">The time and date on which the cached entry expires</param>
+        /// <returns>Timespan relative to the current time</returns>
+        private static uint ToExpiration(
+            DateTime utcExpiry)
+        {
+            return (uint)(DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc) - DateTime.UtcNow).TotalSeconds;
         }
 
         /// <summary>
@@ -60,22 +88,19 @@ namespace Couchbase.AspNet.OutputCache
             // Fix the key
             key = SanitizeKey(key);
 
-            // Make sure that the expiration date is flagged as UTC. The client converts the expiration to 
-            // UTC to calculate the UNIX time and this way we can skip the UTC -> ToLocal -> ToUTC chain
-            utcExpiry = DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc);
-
             // We should only store the item if it's not in the cache. So try to add it and if it 
             // succeeds, return the value we just stored
-            if (client.Store(StoreMode.Add, key, entry, utcExpiry))
+            var expiration = ToExpiration(utcExpiry);
+            if (_bucket.Insert(key, Serialize(entry), expiration).Success)
                 return entry;
 
             // If it's in the cache we should return it
-            var retval = client.Get(key);
+            var retval = DeSerialize(_bucket.Get<byte[]>(key).Value);
 
             // If the item got evicted between the Add and the Get (very rare) we store it anyway, 
             // but this time with Set to make sure it always gets into the cache
             if (retval == null) {
-                client.Store(StoreMode.Set, key, entry, utcExpiry);
+                _bucket.Insert(key, entry, expiration);
                 retval = entry;
             }
 
@@ -93,7 +118,8 @@ namespace Couchbase.AspNet.OutputCache
         public override object Get(
             string key)
         {
-            return client.Get(SanitizeKey(key));
+            var result = _bucket.Get<byte[]>(SanitizeKey(key));
+            return DeSerialize(result.Value);
         }
 
         /// <summary>
@@ -103,7 +129,7 @@ namespace Couchbase.AspNet.OutputCache
         public override void Remove(
             string key)
         {
-            client.Remove(SanitizeKey(key));
+            _bucket.Remove(SanitizeKey(key));
         }
 
         /// <summary>
@@ -117,10 +143,39 @@ namespace Couchbase.AspNet.OutputCache
             object entry,
             DateTime utcExpiry)
         {
-            client.Store(StoreMode.Set, SanitizeKey(key), entry, DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc));
+            _bucket.Insert(SanitizeKey(key), Serialize(entry), ToExpiration(utcExpiry));
+        }
+
+        /// <summary>
+        /// Serializes the object to a byte array
+        /// </summary>
+        /// <param name="value">Object value to seralize</param>
+        /// <returns>Value as a byte array</returns>
+        private byte[] Serialize(
+            object value)
+        {
+            using (var ms = new MemoryStream()) {
+                new BinaryFormatter().Serialize(ms, value);
+                return ms.ToArray();
+            }
+        }
+
+        /// <summary>
+        /// Deserializes a byte array to an object
+        /// </summary>
+        /// <param name="bytes">Bytes to deserialize</param>
+        /// <returns>Object that was deserialized</returns>
+        private object DeSerialize(
+            byte[] bytes)
+        {
+            if (bytes == null) {
+                return null;
+            }
+            using (var ms = new MemoryStream(bytes)) {
+                return new BinaryFormatter().Deserialize(ms);
+            }
         }
     }
-
 }
 
 #region [ License information          ]
@@ -130,6 +185,7 @@ namespace Couchbase.AspNet.OutputCache
  *    @copyright 2012 Couchbase, Inc.
  *    @copyright 2012 Attila Kiskó, enyim.com
  *    @copyright 2012 Good Time Hobbies, Inc.
+ *    @copyright 2015 AMain.com, Inc.
  *    
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
