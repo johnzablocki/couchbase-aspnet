@@ -131,7 +131,7 @@ namespace Couchbase.AspNet.SessionState
                 Timeout = timeout
             };
 
-            e.Save(_bucket, id, false, false);
+            e.SaveAll(_bucket, id, false);
         }
 
         /// <summary>
@@ -227,7 +227,8 @@ namespace Couchbase.AspNet.SessionState
                     e.Flag = SessionStateActions.None;
 
                     // try to update the item in the store
-                    if (e.Save(bucket, id, true, _exclusiveAccess)) {
+                    if (e.SaveHeader(bucket, id, _exclusiveAccess))
+                    {
                         locked = true;
                         lockId = e.LockId;
 
@@ -292,7 +293,7 @@ namespace Couchbase.AspNet.SessionState
                 e.LockTime = DateTime.MinValue;
 
                 // Attempt to save with CAS and loop around if it fails
-            } while (!e.Save(_bucket, id, false, _exclusiveAccess && !newItem));
+            } while (!e.SaveAll(_bucket, id, _exclusiveAccess && !newItem));
         }
 
         /// <summary>
@@ -320,7 +321,7 @@ namespace Couchbase.AspNet.SessionState
                 // Attempt to clear the lock for this item and loop around until we succeed
                 e.LockId = 0;
                 e.LockTime = DateTime.MinValue;
-            } while (!e.Save(_bucket, id, true, _exclusiveAccess));
+            } while (!e.SaveHeader(_bucket, id, _exclusiveAccess));
         }
 
         /// <summary>
@@ -362,7 +363,7 @@ namespace Couchbase.AspNet.SessionState
                 }
 
                 // Try to save with CAS, and loop around until we succeed
-            } while (!e.Save(_bucket, id, false, _exclusiveAccess));
+            } while (!e.SaveAll(_bucket, id, _exclusiveAccess));
         }
 
         /// <summary>
@@ -415,48 +416,69 @@ namespace Couchbase.AspNet.SessionState
             }
 
             /// <summary>
-            /// Saves the session store into Couchbase
+            /// Saves the session store header into Couchbase
             /// </summary>
             /// <param name="bucket">Couchbase bucket to save to</param>
             /// <param name="id">Session ID</param>
-            /// <param name="metaOnly">True to only save the meta data</param>
             /// <param name="useCas">True to use a check and set, false to simply store it</param>
             /// <returns>True if the value was saved, false if not</returns>
-            public bool Save(
+            public bool SaveHeader(
                 IBucket bucket,
                 string id,
-                bool metaOnly,
                 bool useCas)
             {
-                using (var ms = new MemoryStream()) {
-                    // Write the header first
-                    WriteHeader(ms);
+                using (var ms = new MemoryStream())
+                {
                     var ts = TimeSpan.FromMinutes(Timeout);
 
                     // Attempt to write the header and fail if the CAS fails
                     var retval = useCas
                         ? bucket.Upsert(_headerPrefix + id, ms.ToArray(), HeadCas, ts)
                         : bucket.Upsert(_headerPrefix + id, ms.ToArray(), ts);
-                    if (!retval.Success)
-                        return false;
-
-                    // Now save the data
-                    if (!metaOnly) {
-                        // Serialize the data
-                        ms.Position = 0;
-                        using (var bw = new BinaryWriter(ms)) {
-                            Data.Serialize(bw);
-
-                            // Attempt to save the data and fail if the CAS fails
-                            retval = useCas
-                                ? bucket.Upsert(_dataPrefix + id, ms.ToArray(), DataCas, ts)
-                                : bucket.Upsert(_dataPrefix + id, ms.ToArray(), ts);
-                        }
-                    }
-
-                    // Return the success of the operation
                     return retval.Success;
                 }
+            }
+
+            /// <summary>
+            /// Saves the session store data into Couchbase
+            /// </summary>
+            /// <param name="bucket">Couchbase bucket to save to</param>
+            /// <param name="id">Session ID</param>
+            /// <param name="useCas">True to use a check and set, false to simply store it</param>
+            /// <returns>True if the value was saved, false if not</returns>
+            public bool SaveData(
+                IBucket bucket,
+                string id,
+                bool useCas)
+            {
+                var ts = TimeSpan.FromMinutes(Timeout);
+                using (var ms = new MemoryStream())
+                using (var bw = new BinaryWriter(ms))
+                {
+                    Data.Serialize(bw);
+
+                    // Attempt to save the data and fail if the CAS fails
+                    var retval = useCas
+                        ? bucket.Upsert(_dataPrefix + id, ms.ToArray(), DataCas, ts)
+                        : bucket.Upsert(_dataPrefix + id, ms.ToArray(), ts);
+
+                    return retval.Success;
+                }
+            }
+
+            /// <summary>
+            /// Saves the session store into Couchbase
+            /// </summary>
+            /// <param name="bucket">Couchbase bucket to save to</param>
+            /// <param name="id">Session ID</param>
+            /// <param name="useCas">True to use a check and set, false to simply store it</param>
+            /// <returns>True if the value was saved, false if not</returns>
+            public bool SaveAll(
+                IBucket client,
+                string id,
+                bool useCas)
+            {
+                return SaveData(client, id, useCas) && SaveHeader(client, id, useCas);
             }
 
             /// <summary>
