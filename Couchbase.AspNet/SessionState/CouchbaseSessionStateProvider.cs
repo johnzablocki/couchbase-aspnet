@@ -547,7 +547,7 @@ namespace Couchbase.AspNet.SessionState
             {
                 // Read the header value from Couchbase
                 var header = bucket.Get<byte[]>(_headerPrefix + id);
-                if (header.Status == ResponseStatus.KeyNotFound) {
+                if (header.Status != ResponseStatus.Success) {
                     return null;
                 }
 
