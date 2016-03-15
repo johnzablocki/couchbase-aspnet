@@ -28,7 +28,7 @@ namespace Couchbase.AspNet.UnitTests
             bucket.Setup(x => x.Get<byte[]>(It.IsAny<string>())).Returns(result.Object);
 
             //act
-            var item = CouchbaseSessionStateProvider.SessionStateItem.Load(bucket.Object, "thekey", false);
+            var item = SessionStateItem.Load(bucket.Object, "thekey", false);
 
             //assert
             Assert.IsNull(item);
