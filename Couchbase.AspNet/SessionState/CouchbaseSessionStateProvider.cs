@@ -427,8 +427,8 @@ namespace Couchbase.AspNet.SessionState
                 string id,
                 bool useCas)
             {
-                using (var ms = new MemoryStream())
-                {
+                using (var ms = new MemoryStream()) {
+                    WriteHeader(ms);
                     var ts = TimeSpan.FromMinutes(Timeout);
 
                     // Attempt to write the header and fail if the CAS fails
