@@ -1,19 +1,20 @@
-﻿using System;
-using System.Collections.Specialized;
-using Enyim.Caching;
+﻿using System.Collections.Specialized;
+using Couchbase.Core;
 
-namespace Couchbase.AspNet.SessionState
+namespace Couchbase.AspNet
 {
-	public interface ICouchbaseClientFactory
-	{
-		/// <summary>
-		/// Returns a memcached client. This will be called by the provider's Initialize method.
-		/// </summary>
-		/// <param name="name"></param>
-		/// <param name="config"></param>
-		/// <returns></returns>
-		IMemcachedClient Create(string name, NameValueCollection config);
-	}
+    public interface ICouchbaseBucketFactory
+    {
+        /// <summary>
+        /// Returns a Couchbase bucket or create one if it does not exist
+        /// </summary>
+        /// <param name="name">Name of the section from the configuration file</param>
+        /// <param name="config">Configuration section information from the config file</param>
+        /// <returns>Instance of the couchbase bucket to use</returns>
+        IBucket GetBucket(
+            string name,
+            NameValueCollection config);
+    }
 }
 
 #region [ License information          ]
@@ -22,6 +23,8 @@ namespace Couchbase.AspNet.SessionState
  *    @author Couchbase <info@couchbase.com>
  *    @copyright 2012 Couchbase, Inc.
  *    @copyright 2012 Attila Kiskó, enyim.com
+ *    @copyright 2012 Good Time Hobbies, Inc.
+ *    @copyright 2015 AMain.com, Inc.
  *    
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
