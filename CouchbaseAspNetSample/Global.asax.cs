@@ -29,7 +29,6 @@ namespace CouchbaseAspNetSample
 
         protected void Application_Start()
         {
-            ClusterHelper.Initialize("couchbase-caching");
             AreaRegistration.RegisterAllAreas();
 
             RegisterGlobalFilters(GlobalFilters.Filters);
