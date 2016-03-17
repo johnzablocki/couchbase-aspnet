@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>CouchbaseAspNet</id>
+    <version>1.2.1</version>
+    <title>Couchbase ASP.NET SessionState and OutputCache Providers.</title>
+    <authors>Couchbase, Inc.</authors>
+    <owners>Couchbase, Inc.</owners>
+    <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+    <projectUrl>http://www.couchbase.com/communities/net</projectUrl>
+     <description>Couchbase ASP.NET SessionState and OutputCache Providers.</description>
+    <releaseNotes>Updated to CouchbaseNetClient 1.2.7</releaseNotes>
+    <copyright>Copyright 2013</copyright>
+    <tags>couchbase nosql asp.net</tags>
+  </metadata>
+</package>
