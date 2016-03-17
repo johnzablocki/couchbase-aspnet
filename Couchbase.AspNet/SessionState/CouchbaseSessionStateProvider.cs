@@ -8,6 +8,7 @@ namespace Couchbase.AspNet.SessionState
 {
     public class CouchbaseSessionStateProvider : SessionStateStoreProviderBase
     {
+        private ICluster _cluster;
         private IBucket _bucket;
         private static bool _exclusiveAccess;
 
@@ -40,8 +41,11 @@ namespace Couchbase.AspNet.SessionState
             // Initialize the base class
             base.Initialize(name, config);
 
-            // Create our Couchbase bucket instance
-            _bucket = ProviderHelper.GetBucket(name, config);
+            // Create our Cluster based off the CouchbaseConfigSection
+            _cluster = ProviderHelper.GetCluster(name, config);
+
+            // Create the bucket based off the name provided in the
+            _bucket = ProviderHelper.GetBucket(name, config, _cluster);
 
             // By default use exclusive session access. But allow it to be overridden in the config file
             var exclusive = ProviderHelper.GetAndRemove(config, "exclusiveAccess", false) ?? "true";
@@ -66,6 +70,10 @@ namespace Couchbase.AspNet.SessionState
         /// </summary>
         public override void Dispose()
         {
+            if (_cluster != null) {
+                _cluster.Dispose();
+                _cluster = null;
+            }
         }
 
         /// <summary>
