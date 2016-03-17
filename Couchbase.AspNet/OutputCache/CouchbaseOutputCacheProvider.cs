@@ -10,6 +10,7 @@ namespace Couchbase.AspNet.OutputCache
 {
     public class CouchbaseOutputCacheProvider : OutputCacheProvider
     {
+        private ICluster _cluster;
         private IBucket _bucket;
 
         /// <summary>
@@ -32,12 +33,16 @@ namespace Couchbase.AspNet.OutputCache
             // Initialize the base class
             base.Initialize(name, config);
 
-            // Create our Couchbase bucket instance
-            _bucket = ProviderHelper.GetBucket(name, config);
+            // Create our Cluster based off the CouchbaseConfigSection
+            _cluster = ProviderHelper.GetCluster(name, config);
+
+            // Create the bucket based off the name provided in the
+            _bucket = ProviderHelper.GetBucket(name, config, _cluster);
 
             // Allow optional prefix to be used for this application
             var prefix = ProviderHelper.GetAndRemove(config, "prefix", false);
-            if (prefix != null) {
+            if (prefix != null)
+            {
                 _prefix = prefix;
             }
 
@@ -99,7 +104,8 @@ namespace Couchbase.AspNet.OutputCache
 
             // If the item got evicted between the Add and the Get (very rare) we store it anyway, 
             // but this time with Set to make sure it always gets into the cache
-            if (retval == null) {
+            if (retval == null)
+            {
                 _bucket.Insert(key, entry, expiration);
                 retval = entry;
             }
@@ -154,7 +160,8 @@ namespace Couchbase.AspNet.OutputCache
         private byte[] Serialize(
             object value)
         {
-            using (var ms = new MemoryStream()) {
+            using (var ms = new MemoryStream())
+            {
                 new BinaryFormatter().Serialize(ms, value);
                 return ms.ToArray();
             }
@@ -168,10 +175,12 @@ namespace Couchbase.AspNet.OutputCache
         private object DeSerialize(
             byte[] bytes)
         {
-            if (bytes == null) {
+            if (bytes == null)
+            {
                 return null;
             }
-            using (var ms = new MemoryStream(bytes)) {
+            using (var ms = new MemoryStream(bytes))
+            {
                 return new BinaryFormatter().Deserialize(ms);
             }
         }

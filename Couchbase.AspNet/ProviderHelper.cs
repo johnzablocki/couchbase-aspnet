@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Specialized;
+using System.Configuration;
+using Couchbase.Configuration.Client;
+using Couchbase.Configuration.Client.Providers;
 using Couchbase.Core;
 
 namespace Couchbase.AspNet
@@ -46,14 +49,29 @@ namespace Couchbase.AspNet
         /// </summary>
         /// <param name="name">Name of the bucket</param>
         /// <param name="config">Name value collection from config file</param>
+        /// <param name="cluster">The <see cref="ICluster"/> instance.</param>
         /// <returns>Instance of the couchbase bucket to use</returns>
         public static IBucket GetBucket(
             string name,
+            NameValueCollection config, ICluster cluster)
+        {
+            var bucketName = GetAndRemove(config, "bucket", false);
+            if (!string.IsNullOrEmpty(bucketName))
+            {
+                return cluster.OpenBucket(bucketName);
+            }
+
+            //if no bucket is provide use the default bucket
+            return cluster.OpenBucket();
+        }
+
+        public static ICluster GetCluster(
+            string name,
             NameValueCollection config)
         {
-            var factory = GetFactoryInstance(GetAndRemove(config, "factory", false));
-            System.Diagnostics.Debug.Assert(factory != null, "factory == null");
-            return factory.GetBucket(name, config);
+            var section = (CouchbaseClientSection)ConfigurationManager.GetSection(name);
+            var clientConfig = new ClientConfiguration(section);
+            return new Cluster(clientConfig);
         }
 
         /// <summary>

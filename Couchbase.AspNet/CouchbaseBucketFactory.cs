@@ -1,8 +1,10 @@
-﻿using System.Collections.Specialized;
+﻿using System;
+using System.Collections.Specialized;
 using Couchbase.Core;
 
 namespace Couchbase.AspNet
 {
+    [Obsolete("Use CouchbaseConfigSection as factory instead.")]
     public sealed class CouchbaseBucketFactory : ICouchbaseBucketFactory
     {
         /// <summary>
