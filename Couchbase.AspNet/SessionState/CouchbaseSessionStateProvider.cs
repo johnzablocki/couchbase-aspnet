@@ -34,9 +34,7 @@ namespace Couchbase.AspNet.SessionState
         /// </summary>
         /// <param name="name">Name of the element in the configuration file</param>
         /// <param name="config">Configuration values for the provider from the Web.config file</param>
-        public override void Initialize(
-            string name,
-            NameValueCollection config)
+        public override void Initialize(string name, NameValueCollection config)
         {
             // Initialize the base class
             base.Initialize(name, config);
@@ -53,11 +51,13 @@ namespace Couchbase.AspNet.SessionState
 
             // Allow optional header and data prefixes to be used for this application
             var headerPrefix = ProviderHelper.GetAndRemove(config, "headerPrefix", false);
-            if (headerPrefix != null) {
+            if (headerPrefix != null)
+            {
                 HeaderPrefix = headerPrefix;
             }
             var dataPrefix = ProviderHelper.GetAndRemove(config, "dataPrefix", false);
-            if (dataPrefix != null) {
+            if (dataPrefix != null)
+            {
                 DataPrefix = dataPrefix;
             }
 
@@ -70,7 +70,8 @@ namespace Couchbase.AspNet.SessionState
         /// </summary>
         public override void Dispose()
         {
-            if (_cluster != null) {
+            if (_cluster != null)
+            {
                 _cluster.Dispose();
                 _cluster = null;
             }
@@ -81,8 +82,7 @@ namespace Couchbase.AspNet.SessionState
         /// initialization required by the session-state store provider. 
         /// </summary>
         /// <param name="context">HttpContext for the current request</param>
-        public override void InitializeRequest(
-            HttpContext context)
+        public override void InitializeRequest(HttpContext context)
         {
         }
 
@@ -91,8 +91,7 @@ namespace Couchbase.AspNet.SessionState
         /// cleanup required by the session-state store provider.
         /// </summary>
         /// <param name="context">HttpContext for the current request</param>
-        public override void EndRequest(
-            HttpContext context)
+        public override void EndRequest(HttpContext context)
         {
         }
 
@@ -106,9 +105,7 @@ namespace Couchbase.AspNet.SessionState
         /// <param name="context">HttpContext for the current request</param>
         /// <param name="timeout">Timeout value for the session</param>
         /// <returns>New SessionStateStoreData object for storing the session state data</returns>
-        public override SessionStateStoreData CreateNewStoreData(
-            HttpContext context,
-            int timeout)
+        public override SessionStateStoreData CreateNewStoreData(HttpContext context, int timeout)
         {
             return new SessionStateStoreData(new SessionStateItemCollection(),
                 SessionStateUtility.GetSessionStaticObjects(context),
@@ -123,12 +120,10 @@ namespace Couchbase.AspNet.SessionState
         /// <param name="context">HttpContext for the current request</param>
         /// <param name="id">Session ID for the new session</param>
         /// <param name="timeout">Timeout value for the session</param>
-        public override void CreateUninitializedItem(
-            HttpContext context,
-            string id,
-            int timeout)
+        public override void CreateUninitializedItem(HttpContext context, string id, int timeout)
         {
-            var e = new SessionStateItem {
+            var e = new SessionStateItem
+            {
                 Data = new SessionStateItemCollection(),
                 Flag = SessionStateActions.InitializeItem,
                 LockId = 0,
@@ -215,12 +210,14 @@ namespace Couchbase.AspNet.SessionState
             if (e == null)
                 return null;
 
-            if (acquireLock) {
+            if (acquireLock)
+            {
                 // repeat until we can update the retrieved 
                 // item (i.e. nobody changes it between the 
                 // time we get it from the store and updates it s attributes)
                 // Save() will return false if Cas() fails
-                while (true) {
+                while (true)
+                {
                     if (e.LockId > 0)
                         break;
 
@@ -272,7 +269,8 @@ namespace Couchbase.AspNet.SessionState
         {
             SessionStateItem e;
             do {
-                if (!newItem) {
+                if (!newItem)
+                {
                     var tmp = (ulong)lockId;
 
                     // Load the entire item with CAS (need the DataCas value also for the save)
@@ -281,10 +279,13 @@ namespace Couchbase.AspNet.SessionState
                     // if we're expecting an existing item, but
                     // it's not in the cache
                     // or it's locked by someone else, then quit
-                    if (e == null || e.LockId != tmp) {
+                    if (e == null || e.LockId != tmp)
+                    {
                         return;
                     }
-                } else {
+                }
+                else
+                {
                     // Create a new item if it requested
                     e = new SessionStateItem();
                 }
@@ -318,7 +319,8 @@ namespace Couchbase.AspNet.SessionState
                 e = SessionStateItem.Load(_bucket, id, true);
 
                 // Bail if the entry does not exist, or the lock ID does not match our lock ID
-                if (e == null || e.LockId != tmp) {
+                if (e == null || e.LockId != tmp)
+                {
                     break;
                 }
 
@@ -344,7 +346,8 @@ namespace Couchbase.AspNet.SessionState
             var tmp = (ulong)lockId;
             var e = SessionStateItem.Load(_bucket, id, true);
 
-            if (e != null && e.LockId == tmp) {
+            if (e != null && e.LockId == tmp)
+            {
                 SessionStateItem.Remove(_bucket, id);
             }
         }
@@ -362,7 +365,8 @@ namespace Couchbase.AspNet.SessionState
             do {
                 // Load the item with CAS
                 e = SessionStateItem.Load(_bucket, id, false);
-                if (e == null) {
+                if (e == null)
+                {
                     break;
                 }
 
@@ -376,8 +380,7 @@ namespace Couchbase.AspNet.SessionState
         /// </summary>
         /// <param name="expireCallback">Session expiration callback to set</param>
         /// <returns>False, since we don't support this feature</returns>
-        public override bool SetItemExpireCallback(
-            SessionStateItemExpireCallback expireCallback)
+        public override bool SetItemExpireCallback(SessionStateItemExpireCallback expireCallback)
         {
             return false;
         }
