@@ -1,6 +1,8 @@
 Couchbase ASP.NET Integration
 ================
 
+[![Join the chat at https://gitter.im/couchbaselabs/couchbase-aspnet](https://badges.gitter.im/couchbaselabs/couchbase-aspnet.svg)](https://gitter.im/couchbaselabs/couchbase-aspnet?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 This library provides infrastructure support for using [Couchbase Server](http://couchbase.com) and ASP.NET.
 
 - To request a feature or report a bug use [Jira](https://issues.couchbase.com/projects/CBASP).
