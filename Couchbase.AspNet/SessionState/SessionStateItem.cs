@@ -53,7 +53,8 @@ namespace Couchbase.AspNet.SessionState
         public bool SaveHeader(
             IBucket bucket,
             string id,
-            bool useCas)
+            bool useCas,
+            out ResponseStatus status)
         {
             using (var ms = new MemoryStream())
             {
@@ -64,6 +65,8 @@ namespace Couchbase.AspNet.SessionState
                 var retval = useCas
                     ? bucket.Upsert(CouchbaseSessionStateProvider.HeaderPrefix + id, ms.ToArray(), HeadCas, ts)
                     : bucket.Upsert(CouchbaseSessionStateProvider.HeaderPrefix + id, ms.ToArray(), ts);
+
+                status = retval.Status;
                 return retval.Success;
             }
         }
@@ -74,11 +77,13 @@ namespace Couchbase.AspNet.SessionState
         /// <param name="bucket">Couchbase bucket to save to</param>
         /// <param name="id">Session ID</param>
         /// <param name="useCas">True to use a check and set, false to simply store it</param>
+        /// <param name="status">The <see cref="ResponseStatus"/> from the server.</param>
         /// <returns>True if the value was saved, false if not</returns>
         public bool SaveData(
             IBucket bucket,
             string id,
-            bool useCas)
+            bool useCas,
+            out ResponseStatus status)
         {
             var ts = TimeSpan.FromMinutes(Timeout);
             using (var ms = new MemoryStream())
@@ -91,6 +96,7 @@ namespace Couchbase.AspNet.SessionState
                     ? bucket.Upsert(CouchbaseSessionStateProvider.DataPrefix + id, ms.ToArray(), DataCas, ts)
                     : bucket.Upsert(CouchbaseSessionStateProvider.DataPrefix + id, ms.ToArray(), ts);
 
+                status = retval.Status;
                 return retval.Success;
             }
         }
@@ -101,13 +107,20 @@ namespace Couchbase.AspNet.SessionState
         /// <param name="bucket">Couchbase bucket to save to</param>
         /// <param name="id">Session ID</param>
         /// <param name="useCas">True to use a check and set, false to simply store it</param>
+        /// <param name="keyNotFound">True if <see cref="ResponseStatus.KeyNotFound"/> is returned for the body or the header.</param>
         /// <returns>True if the value was saved, false if not</returns>
         public bool SaveAll(
             IBucket bucket,
             string id,
-            bool useCas)
+            bool useCas,
+            out bool keyNotFound)
         {
-            return SaveData(bucket, id, useCas) && SaveHeader(bucket, id, useCas);
+            var dataStatus = ResponseStatus.None;
+            var headerStatus = ResponseStatus.None;
+
+            var failed = SaveData(bucket, id, useCas, out dataStatus) && SaveHeader(bucket, id, useCas, out headerStatus);
+            keyNotFound = dataStatus == ResponseStatus.KeyNotFound || headerStatus == ResponseStatus.KeyNotFound;
+            return failed;
         }
 
         /// <summary>

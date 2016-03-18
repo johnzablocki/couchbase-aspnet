@@ -4,7 +4,7 @@ using Couchbase.IO;
 using Moq;
 using NUnit.Framework;
 
-namespace Couchbase.AspNet.UnitTests
+namespace Couchbase.AspNet.UnitTests.SessionState
 {
     [TestFixture]
     public class SessionStateItemTests
