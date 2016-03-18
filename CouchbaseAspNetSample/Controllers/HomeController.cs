@@ -25,5 +25,11 @@ namespace CouchbaseAspNetSample.Controllers
 			return View();
 		}
 
+		[OutputCache(Duration = 10, VaryByParam="foo")]
+		public ActionResult Time(string foo)
+		{
+			return Content(DateTime.Now.ToString());
+		}
+
 	}
 }
