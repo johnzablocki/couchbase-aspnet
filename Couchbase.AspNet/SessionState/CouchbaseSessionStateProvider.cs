@@ -25,6 +25,22 @@ namespace Couchbase.AspNet.SessionState
         }
 
         /// <summary>
+        /// Gets the name of the provider
+        /// </summary>
+        public override string Name
+        {
+            get { return GetType().Name; }
+        }
+
+        /// <summary>
+        /// Gets a description of the provider.
+        /// </summary>
+        public override string Description
+        {
+            get { return "Implementation of SessionStateStoreProvider using Couchbase Server as the backend store."; }
+        }
+
+        /// <summary>
         /// For unit testing only.
         /// </summary>
         /// <param name="cluster"></param>
