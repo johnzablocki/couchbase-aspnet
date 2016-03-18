@@ -1,6 +1,8 @@
 couchbase-aspnet 2.0
 ================
 
+[![Join the chat at https://gitter.im/couchbaselabs/couchbase-aspnet](https://badges.gitter.im/couchbaselabs/couchbase-aspnet.svg)](https://gitter.im/couchbaselabs/couchbase-aspnet?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 This library provides infrastructure support for using [Couchbase Server](http://couchbase.com) and ASP.NET.
 
 ## Features:
