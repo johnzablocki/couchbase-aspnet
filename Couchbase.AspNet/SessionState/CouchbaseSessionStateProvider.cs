@@ -3,14 +3,39 @@ using System.Collections.Specialized;
 using System.Web.SessionState;
 using System.Web;
 using Couchbase.Core;
+using Couchbase.IO;
 
 namespace Couchbase.AspNet.SessionState
 {
+    /// <summary>
+    /// A <see cref="SessionStateStoreProviderBase"/> implementation which uses Couchbase Server as the backing store.
+    /// </summary>
     public class CouchbaseSessionStateProvider : SessionStateStoreProviderBase
     {
         private ICluster _cluster;
         private IBucket _bucket;
         private static bool _exclusiveAccess;
+        private int _maxRetryCount = 5;
+
+        /// <summary>
+        /// Required default ctor for ASP.NET
+        /// </summary>
+        public CouchbaseSessionStateProvider()
+        {
+        }
+
+        /// <summary>
+        /// For unit testing only.
+        /// </summary>
+        /// <param name="cluster"></param>
+        /// <param name="bucket"></param>
+        public CouchbaseSessionStateProvider(
+            ICluster cluster,
+            IBucket bucket)
+        {
+            _cluster = cluster;
+            _bucket = bucket;
+        }
 
         /// <summary>
         /// Defines the prefix for header data in the Couchbase bucket. Must be unique to ensure it does not conflict with 
@@ -28,7 +53,6 @@ namespace Couchbase.AspNet.SessionState
             (System.Web.Hosting.HostingEnvironment.SiteName ?? string.Empty).Replace(" ", "-") + "+" +
             System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath + "data-";
 
-
         /// <summary>
         /// Function to initialize the provider
         /// </summary>
@@ -39,11 +63,16 @@ namespace Couchbase.AspNet.SessionState
             // Initialize the base class
             base.Initialize(name, config);
 
-            // Create our Cluster based off the CouchbaseConfigSection
-            _cluster = ProviderHelper.GetCluster(name, config);
-
-            // Create the bucket based off the name provided in the
-            _bucket = ProviderHelper.GetBucket(name, config, _cluster);
+            if (_cluster == null)
+            {
+                // Create our Cluster based off the CouchbaseConfigSection
+                _cluster = ProviderHelper.GetCluster(name, config);
+            }
+            if (_bucket == null)
+            {
+                // Create the bucket based off the name provided in the
+                _bucket = ProviderHelper.GetBucket(name, config, _cluster);
+            }
 
             // By default use exclusive session access. But allow it to be overridden in the config file
             var exclusive = ProviderHelper.GetAndRemove(config, "exclusiveAccess", false) ?? "true";
@@ -59,6 +88,12 @@ namespace Couchbase.AspNet.SessionState
             if (dataPrefix != null)
             {
                 DataPrefix = dataPrefix;
+            }
+            var maxRetryCount = ProviderHelper.GetAndRemove(config, "maxRetryCount", false);
+            var temp = 0;
+            if (int.TryParse(maxRetryCount, out temp))
+            {
+                _maxRetryCount = temp;
             }
 
             // Make sure no extra attributes are included
@@ -130,7 +165,8 @@ namespace Couchbase.AspNet.SessionState
                 Timeout = timeout
             };
 
-            e.SaveAll(_bucket, id, false);
+            bool keyNotFound;
+            e.SaveAll(_bucket, id, false, out keyNotFound);
         }
 
         /// <summary>
@@ -227,13 +263,18 @@ namespace Couchbase.AspNet.SessionState
                     e.LockTime = DateTime.UtcNow;
                     e.Flag = SessionStateActions.None;
 
+                    ResponseStatus status;
                     // try to update the item in the store
-                    if (e.SaveHeader(bucket, id, _exclusiveAccess))
+                    if (e.SaveHeader(bucket, id, _exclusiveAccess, out status))
                     {
                         locked = true;
                         lockId = e.LockId;
 
                         return e;
+                    }
+                    if (status == ResponseStatus.KeyNotFound)
+                    {
+                        break;
                     }
 
                     // it has been modified between we loaded and tried to save it
@@ -267,6 +308,8 @@ namespace Couchbase.AspNet.SessionState
             object lockId,
             bool newItem)
         {
+            bool keyNotFound;
+            var retries = 0;
             SessionStateItem e;
             do {
                 if (!newItem)
@@ -298,7 +341,7 @@ namespace Couchbase.AspNet.SessionState
                 e.LockTime = DateTime.MinValue;
 
                 // Attempt to save with CAS and loop around if it fails
-            } while (!e.SaveAll(_bucket, id, _exclusiveAccess && !newItem));
+            } while (!e.SaveAll(_bucket, id, _exclusiveAccess && !newItem, out keyNotFound) && retries++ < _maxRetryCount && !keyNotFound);
         }
 
         /// <summary>
@@ -312,6 +355,8 @@ namespace Couchbase.AspNet.SessionState
             string id,
             object lockId)
         {
+            ResponseStatus status;
+            var retries = 0;
             var tmp = (ulong)lockId;
             SessionStateItem e;
             do {
@@ -327,7 +372,7 @@ namespace Couchbase.AspNet.SessionState
                 // Attempt to clear the lock for this item and loop around until we succeed
                 e.LockId = 0;
                 e.LockTime = DateTime.MinValue;
-            } while (!e.SaveHeader(_bucket, id, _exclusiveAccess));
+            } while (!e.SaveHeader(_bucket, id, _exclusiveAccess, out status) && retries < _maxRetryCount && status != ResponseStatus.KeyNotFound);
         }
 
         /// <summary>
@@ -361,6 +406,8 @@ namespace Couchbase.AspNet.SessionState
             HttpContext context,
             string id)
         {
+            bool keyNotFound;
+            var retries = 0;
             SessionStateItem e;
             do {
                 // Load the item with CAS
@@ -371,7 +418,7 @@ namespace Couchbase.AspNet.SessionState
                 }
 
                 // Try to save with CAS, and loop around until we succeed
-            } while (!e.SaveAll(_bucket, id, _exclusiveAccess));
+            } while (!e.SaveAll(_bucket, id, _exclusiveAccess, out keyNotFound) && retries < _maxRetryCount && !keyNotFound);
         }
 
         /// <summary>

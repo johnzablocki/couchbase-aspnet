@@ -74,7 +74,7 @@
     <Compile Include="SessionState\CouchbaseSessionStateProvider.cs" />
     <Compile Include="ICouchbaseBucketFactory.cs" />
     <Compile Include="ProviderHelper.cs" />
-    <Compile Include="SessionState\SessionStateItemcs.cs" />
+    <Compile Include="SessionState\SessionStateItem.cs" />
     <Compile Include="Web\CouchbaseHttpApplication.cs" />
   </ItemGroup>
   <ItemGroup>
