@@ -12,10 +12,11 @@ namespace Couchbase.AspNet.SessionState
     /// </summary>
     public class CouchbaseSessionStateProvider : SessionStateStoreProviderBase
     {
-        private ICluster _cluster;
-        private IBucket _bucket;
+        private static ICluster _cluster;
+        private static IBucket _bucket;
         private static bool _exclusiveAccess;
         private int _maxRetryCount = 5;
+        private static object _syncObj = new object();
 
         /// <summary>
         /// Required default ctor for ASP.NET
@@ -79,17 +80,23 @@ namespace Couchbase.AspNet.SessionState
             // Initialize the base class
             base.Initialize(name, config);
 
-            if (_cluster == null)
+            lock (_syncObj)
             {
-                // Create our Cluster based off the CouchbaseConfigSection
-                _cluster = ProviderHelper.GetCluster(name, config);
+                if (_cluster == null)
+                {
+                    // Create our Cluster based off the CouchbaseConfigSection
+                    _cluster = ProviderHelper.GetCluster(name, config);
+                }
+                if (_bucket == null)
+                {
+                    // Create the bucket based off the name provided in the
+                    _bucket = ProviderHelper.GetBucket(name, config, _cluster);
+                }
+                else
+                {
+                    ProviderHelper.GetAndRemove(config, "bucket", false);
+                }
             }
-            if (_bucket == null)
-            {
-                // Create the bucket based off the name provided in the
-                _bucket = ProviderHelper.GetBucket(name, config, _cluster);
-            }
-
             // By default use exclusive session access. But allow it to be overridden in the config file
             var exclusive = ProviderHelper.GetAndRemove(config, "exclusiveAccess", false) ?? "true";
             _exclusiveAccess = (string.Compare(exclusive, "true", StringComparison.OrdinalIgnoreCase) == 0);
@@ -121,10 +128,13 @@ namespace Couchbase.AspNet.SessionState
         /// </summary>
         public override void Dispose()
         {
-            if (_cluster != null)
+            lock (_syncObj)
             {
-                _cluster.Dispose();
-                _cluster = null;
+                if (_cluster != null)
+                {
+                    _cluster.Dispose();
+                    _cluster = null;
+                }
             }
         }
 
