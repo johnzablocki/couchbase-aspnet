@@ -8,6 +8,7 @@ This library provides infrastructure support for using [Couchbase Server](http:/
 - To request a feature or report a bug use [Jira](https://issues.couchbase.com/projects/CBASP).
 - Gitter home is here ^^^
 - Couchbase Forums for help is [here](https://forums.couchbase.com/c/net-sdk).
+- Current release on [NuGet](https://www.nuget.org/packages/CouchbaseAspNet/2.0.0-beta3).
 
 ## Features:
 
