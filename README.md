@@ -1,54 +1,62 @@
-couchbase-aspnet 2.0
+Couchbase ASP.NET Integration
 ================
 
 This library provides infrastructure support for using [Couchbase Server](http://couchbase.com) and ASP.NET.
+
+- To request a feature or report a bug use [Jira](https://issues.couchbase.com/projects/CBASP).
+- Gitter home is here: [![Gitter](https://badges.gitter.im/couchbaselabs/couchbase-aspnet.svg)](https://gitter.im/couchbaselabs/couchbase-aspnet?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+- Couchbase Forums for help is [here](https://forums.couchbase.com/c/net-sdk).
 
 ## Features:
 
 ASP.NET SessionState Provider
 
-* Updated to Couchbase .NET SDK 2.1!
+* Updated to Couchbase .NET SDK 2.2!
 * Port of the [Enyim Memcached Provider](https://github.com/enyim/memcached-providers) to Couchbase Server
 
 ## Requirements
 
 * You'll need .NET Framework 4.5 or later to use the precompiled binaries. 
 * To build the client, you'll need Visual Studio > 2012 with MVC 4 to compile.
-* The Nuget package for [Couchbase.NetClient 2.1.X](http://nuget.org/packages/CouchbaseNetClient) is referenced by Couchbase.AspNet
+* The Nuget package for [Couchbase.NetClient 2.2.X](http://nuget.org/packages/CouchbaseNetClient) is referenced by Couchbase.AspNet
 * Couchbase Server 2.5 or greater
 
 ## Application Startup
 
-The first thing you will need to do is make sure you initialize the Couchbase Cluster using the ClusterHelper class in your Global.asax file:
-
-    protected void Application_Start()
-    {
-    	ClusterHelper.Initialize("couchbase-caching");
-    	
-    	...
-    }
+***Note: its no longer required to initialize the ClusterHelper in global.asax or setup.cs to use the session or caching providers***
 
 ## Configuring the SessionState provider
 
+Configure the Couchbase Client as you normally would:
+
+	<configSections>
+      <section name="couchbase-session" type="Couchbase.Configuration.Client.Providers.CouchbaseClientSection, Couchbase.NetClient" />
+    </configSections>
+
+	...
+
+	<couchbase-session>
+		<servers>
+			<!-- changes in appSettings section should also be reflected here -->
+			<add uri="http://localhost:8091/"></add>
+		</servers>
+		<buckets>
+			<add name="my-memcached-bucket"></add>
+		</buckets>
+	</couchbase-session>
+
 Update the sessionState section in Web.config as follows:
 
-    <sessionState customProvider="Couchbase" mode="Custom">
+    <sessionState customProvider="couchbase-session" mode="Custom">
       <providers>
-        <add name="Couchbase" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" />
+        <add name="couchbase-session" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet"  bucket="my-memcached-bucket" 
+		maxRetryCount="6"  />
       </providers>
     </sessionState>
 		
-Configure the Couchbase Client as you normally would:
+**Important #1:** note that the name of the session provider ("couchbase-session") must match the name of the `CouchbaseClientSection` you defined earlier. The name can be anything you like but it must match so that the provider can lookup the couchbase configuration.
 
-    <section name="couchbase-caching" type="Couchbase.Configuration.Client.Providers.CouchbaseClientSection, Couchbase.NetClient" />
-    <couchbase-caching>
-        <servers>
-          <add uri="http://localhost:8091"></add>
-        </servers>
-        <buckets>
-           <add name="default"></add>
-        </buckets>
-    </couchbase-caching>
+**Important #2:** the name of the bucket in the `sessionState` section ("my-memcached-bucket") must match the bucket name defined in the `CouchbaseClientSection `as well so during initialization the correct bucket is created.
     
 If you would like to use a different bucket than the default one, you may do so by specifying a value for the "bucket" attribute of the provider entry (see below).
 
@@ -60,25 +68,17 @@ If you would like to use a different bucket than the default one, you may do so 
 
 If you would like to control the prefixes used to store data in the Couchbase bucket, you can change the default values (which are based on the application name and virtual path) with your own custom values. This will allow you to share session data between applications if you so desire.
 
-    <sessionState customProvider="Couchbase" mode="Custom">
+    <sessionState customProvider="couchbase-session" mode="Custom">
       <providers>
-        <add name="Couchbase" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" headerPrefix="header-" dataPrefix ="data-" />
-      </providers>
-    </sessionState>
-
-If you would like to use a custom bucket factory, you may do so by specifying a value in the "factory" attribute of the provider entry. The example below sets it to the default factory, but you can replace this with your own factory class to have full control over the creation and lifecycle of the Couchbase client.
-
-    <sessionState customProvider="Couchbase" mode="Custom">
-      <providers>
-        <add name="Couchbase" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" factory="Couchbase.AspNet.CouchbaseBucketFactory" />
+        <add name="couchbase-session" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" headerPrefix="header-" dataPrefix ="data-" />
       </providers>
     </sessionState>
 
 This session handler also supports the ability to disable exclusive session access for ASP.NET sessions if desired. You can set the value using the "exclusiveAccess" attribute of the provider entry.
 
-    <sessionState customProvider="Couchbase" mode="Custom">
+    <sessionState customProvider="couchbase-session" mode="Custom">
       <providers>
-        <add name="Couchbase" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" exclusiveAccess="false" />
+        <add name="couchbase-session" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" exclusiveAccess="false" />
       </providers>
     </sessionState>
 	
@@ -98,47 +98,48 @@ Be sure to mark any user defined types as Serializable.
 
 ## Configuring the OutputCache provider
 
-Update the outputCache section in Web.config as follows:
-
-      <outputCache defaultProvider="CouchbaseCache">
-        <providers>
-          <add name="CouchbaseCache" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" />
-        </providers>
-      </outputCache>
-
 Configure the Couchbase Client as you normally would:
 
-    <section name="couchbase-caching" type="Couchbase.Configuration.Client.Providers.CouchbaseClientSection, Couchbase.NetClient" />
+    <configSections>
+    	<section name="couchbase-caching" type="Couchbase.Configuration.Client.Providers.CouchbaseClientSection, Couchbase.NetClient" />
+	</configSections>
+
+	...
+
     <couchbase-caching>
         <servers>
           <add uri="http://localhost:8091"></add>
         </servers>
         <buckets>
-           <add name="default"></add>
+           <add name="my-couchbase-bucket"></add>
         </buckets>
     </couchbase-caching>
 
+Update the outputCache section in Web.config as follows:
+
+      <outputCache defaultProvider="couchbase-caching">
+        <providers>
+          <add name="couchbase-caching" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" bucket="my-couchbase-bucket"/>
+        </providers>
+      </outputCache>
+
+**Important #1:** note that the name of the caching provider ("couchbase-caching") must match the name of the `CouchbaseClientSection` you defined earlier. The name can be anything you like but it must match so that the provider can lookup the couchbase configuration.
+
+**Important #2:** the name of the bucket in the `outputCache` section ("my-couchbase-bucket") must match the bucket name defined in the `CouchbaseClientSection `as well so during initialization the correct bucket is created.
+
 If you would like to use a different bucket than the default one, you may do so by specifying a value for the "bucket" attribute of the provider entry (see below).
 
-      <outputCache defaultProvider="CouchbaseCache">
+      <outputCache defaultProvider="couchbase-caching">
         <providers>
-          <add name="CouchbaseCache" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" bucket="my-bucket" />
+          <add name="couchbase-caching" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" bucket="my-bucket" />
         </providers>
       </outputCache>
 
 If you would like to control the prefix used to store data in the Couchbase bucket, you can change the default values (which are based on the application name and virtual path) with your own custom value. This will allow you to share cache data between applications if you so desire.
 
-      <outputCache defaultProvider="CouchbaseCache">
+      <outputCache defaultProvider="couchbase-caching">
         <providers>
-          <add name="CouchbaseCache" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" prefix="cache-" />
-        </providers>
-      </outputCache>
-
-If you would like to use a custom bucket factory, you may do so by specifying a value in the "factory" attribute of the provider entry. The example below sets it to the default factory, but you can replace this with your own factory class to have full control over the creation and lifecycle of the Couchbase client.
-
-      <outputCache defaultProvider="CouchbaseCache">
-        <providers>
-          <add name="CouchbaseCache" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" factory="Couchbase.AspNet.CouchbaseBucketFactory" />
+          <add name="couchbase-caching" type="Couchbase.AspNet.OutputCache.CouchbaseOutputCacheProvider, Couchbase.AspNet" prefix="cache-" />
         </providers>
       </outputCache>
 
@@ -157,3 +158,15 @@ or with ASP.NET WebForms
 ## Packaging Notes
 From the Couchbase.AspNet directory, run nuget pack as follows:
 `nuget pack .\Couchbase.AspNet.csproj`
+
+
+##Change Log and Notes##
+- `ICouchbaseBucketFactory` and `CouchbaseBucketFactory` have been made obsolete and are no longer used. Instead the provider will use the `CouchbaseConfigSection` as a factory to create the correct cluster and bucket objects.
+- `ClusterHelper` is no longer used internally; the provider will create static `Cluster` and `CouchbaseBucket/MemcachedBucket` objects.
+- A new parameter has been added to limit the  number of retries that will occur if an `CouchbaseSessionStateProvider` item is locked with CAS. It's called `maxRetryCount` and defaults to `5`:
+
+
+    <add name="couchbase-session" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" maxRetryCount="10" />
+
+##Contributing##
+The Couchbase Caching and Session Providers is an open source software project which is depends upon community contributions and feedback. We welcome all forms of contribution good, bad or in-different!	
