@@ -1,9 +1,0 @@
-﻿@using CouchbaseAspNetSample.Models
-@{ User user = Session[CouchbaseAspNetSample.Constants.SessionConstants.USER] as User; }
-@if(user != null) {
-    <text>Welcome <strong>@user.Username</strong>!
-    [ @Html.ActionLink("Log Off", "LogOff", "Account") ]</text>
-}
-else {
-    @:[ @Html.ActionLink("Log On", "LogOn", "Account") ]
-}
