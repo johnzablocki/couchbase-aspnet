@@ -128,14 +128,6 @@ namespace Couchbase.AspNet.SessionState
         /// </summary>
         public override void Dispose()
         {
-            lock (_syncObj)
-            {
-                if (_cluster != null)
-                {
-                    _cluster.Dispose();
-                    _cluster = null;
-                }
-            }
         }
 
         /// <summary>
