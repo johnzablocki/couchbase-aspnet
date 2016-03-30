@@ -20,9 +20,10 @@ ASP.NET SessionState Provider
 ## Requirements
 
 * You'll need .NET Framework 4.5 or later to use the precompiled binaries. 
-* To build the client, you'll need Visual Studio > 2012 with MVC 4 to compile.
+* To build the client, you'll need Visual Studio > 2012 with MVC 5 to compile.
 * The Nuget package for [Couchbase.NetClient 2.2.X](http://nuget.org/packages/CouchbaseNetClient) is referenced by Couchbase.AspNet
 * Couchbase Server 2.5 or greater
+* Unit tests - Download NUnit3 Test Adapter extension in order to run and test the Unit tests.
 
 ## Application Startup
 
