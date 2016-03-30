@@ -12,11 +12,13 @@ namespace Couchbase.AspNet.SessionState
     /// </summary>
     public class CouchbaseSessionStateProvider : SessionStateStoreProviderBase
     {
-        private static ICluster _cluster;
-        private static IBucket _bucket;
+        private IBucket _bucket;
         private static bool _exclusiveAccess;
         private int _maxRetryCount = 5;
-        private static object _syncObj = new object();
+        private string _configName;
+        private string _bucketName;
+
+        private static readonly object _syncObj = new object();
 
         /// <summary>
         /// Required default ctor for ASP.NET
@@ -44,13 +46,9 @@ namespace Couchbase.AspNet.SessionState
         /// <summary>
         /// For unit testing only.
         /// </summary>
-        /// <param name="cluster"></param>
         /// <param name="bucket"></param>
-        public CouchbaseSessionStateProvider(
-            ICluster cluster,
-            IBucket bucket)
+        public CouchbaseSessionStateProvider(IBucket bucket)
         {
-            _cluster = cluster;
             _bucket = bucket;
         }
 
@@ -80,23 +78,17 @@ namespace Couchbase.AspNet.SessionState
             // Initialize the base class
             base.Initialize(name, config);
 
+            _configName = name;
+            AppDomain.CurrentDomain.DomainUnload += Application_End;
+            ClusterClient.Configure(name, config);
+
             lock (_syncObj)
             {
-                if (_cluster == null)
-                {
-                    // Create our Cluster based off the CouchbaseConfigSection
-                    _cluster = ProviderHelper.GetCluster(name, config);
-                }
-                if (_bucket == null)
-                {
-                    // Create the bucket based off the name provided in the
-                    _bucket = ProviderHelper.GetBucket(name, config, _cluster);
-                }
-                else
-                {
-                    ProviderHelper.GetAndRemove(config, "bucket", false);
-                }
+                // Create the bucket based off the name provided in the
+                _bucketName = ProviderHelper.GetAndRemove(config, "bucket", false);
+                _bucket = ClusterClient.GetBucket(name, _bucketName);
             }
+
             // By default use exclusive session access. But allow it to be overridden in the config file
             var exclusive = ProviderHelper.GetAndRemove(config, "exclusiveAccess", false) ?? "true";
             _exclusiveAccess = (string.Compare(exclusive, "true", StringComparison.OrdinalIgnoreCase) == 0);
@@ -128,6 +120,23 @@ namespace Couchbase.AspNet.SessionState
         /// </summary>
         public override void Dispose()
         {
+        }
+
+        /// <summary>
+        /// Handles the End event of the Application control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        public void Application_End(object sender, EventArgs e)
+        {
+            try
+            {
+                ClusterClient.CloseOne(_configName, _bucketName);
+            }
+            catch (Exception)
+            {
+                //the app domain has already shutdown
+            }
         }
 
         /// <summary>

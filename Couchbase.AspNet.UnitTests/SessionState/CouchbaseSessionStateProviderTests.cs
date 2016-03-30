@@ -47,7 +47,7 @@ namespace Couchbase.AspNet.UnitTests.SessionState
             var bucket = new Mock<IBucket>();
             bucket.Setup(x => x.Get<byte[]>(It.IsAny<string>())).Returns(result.Object);
 
-            var provider = new CouchbaseSessionStateProvider(new Mock<ICluster>().Object, bucket.Object);
+            var provider = new CouchbaseSessionStateProvider(bucket.Object);
 
             bool locked;
             TimeSpan lockAge;
