@@ -399,7 +399,7 @@ namespace Couchbase.AspNet.SessionState
                 // Attempt to clear the lock for this item and loop around until we succeed
                 e.LockId = 0;
                 e.LockTime = DateTime.MinValue;
-            } while (!e.SaveHeader(_bucket, id, _exclusiveAccess, out status) && retries < _maxRetryCount && status != ResponseStatus.KeyNotFound);
+            } while (!e.SaveHeader(_bucket, id, _exclusiveAccess, out status) && retries++ < _maxRetryCount && status != ResponseStatus.KeyNotFound);
         }
 
         /// <summary>
@@ -445,7 +445,7 @@ namespace Couchbase.AspNet.SessionState
                 }
 
                 // Try to save with CAS, and loop around until we succeed
-            } while (!e.SaveAll(_bucket, id, _exclusiveAccess, out keyNotFound) && retries < _maxRetryCount && !keyNotFound);
+            } while (!e.SaveAll(_bucket, id, _exclusiveAccess, out keyNotFound) && retries++ < _maxRetryCount && !keyNotFound);
         }
 
         /// <summary>
