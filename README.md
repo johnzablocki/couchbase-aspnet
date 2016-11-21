@@ -2,6 +2,7 @@ Couchbase ASP.NET Integration
 ================
 
 [![Join the chat at https://gitter.im/couchbaselabs/couchbase-aspnet](https://badges.gitter.im/couchbaselabs/couchbase-aspnet.svg)](https://gitter.im/couchbaselabs/couchbase-aspnet?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Build status](https://ci.appveyor.com/api/projects/status/7owuw1ofqnp48bcb?svg=true)](https://ci.appveyor.com/project/Couchbase/couchbase-aspnet)
 
 This library provides infrastructure support for using [Couchbase Server](http://couchbase.com) and ASP.NET.
 
@@ -19,7 +20,7 @@ ASP.NET SessionState Provider
 
 ## Requirements
 
-* You'll need .NET Framework 4.5 or later to use the precompiled binaries. 
+* You'll need .NET Framework 4.5 or later to use the precompiled binaries.
 * To build the client, you'll need Visual Studio > 2012 with MVC 5 to compile.
 * The Nuget package for [Couchbase.NetClient 2.2.X](http://nuget.org/packages/CouchbaseNetClient) is referenced by Couchbase.AspNet
 * Couchbase Server 2.5 or greater
@@ -53,15 +54,15 @@ Update the sessionState section in Web.config as follows:
 
     <sessionState customProvider="couchbase-session" mode="Custom">
       <providers>
-        <add name="couchbase-session" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet"  bucket="my-memcached-bucket" 
+        <add name="couchbase-session" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet"  bucket="my-memcached-bucket"
 		maxRetryCount="6"  />
       </providers>
     </sessionState>
-		
+
 **Important #1:** note that the name of the session provider ("couchbase-session") must match the name of the `CouchbaseClientSection` you defined earlier. The name can be anything you like but it must match so that the provider can lookup the couchbase configuration.
 
 **Important #2:** the name of the bucket in the `sessionState` section ("my-memcached-bucket") must match the bucket name defined in the `CouchbaseClientSection `as well so during initialization the correct bucket is created.
-    
+
 If you would like to use a different bucket than the default one, you may do so by specifying a value for the "bucket" attribute of the provider entry (see below).
 
     <sessionState customProvider="Couchbase" mode="Custom">
@@ -85,7 +86,7 @@ This session handler also supports the ability to disable exclusive session acce
         <add name="couchbase-session" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" exclusiveAccess="false" />
       </providers>
     </sessionState>
-	
+
 In code, simply use the Session object as you normally would.
 
 	Session["Message"] = "Couchbase is awesome!";
@@ -93,7 +94,7 @@ In code, simply use the Session object as you normally would.
 Be sure to mark any user defined types as Serializable.
 
 	[Serializable]
-	public class SessionUser 
+	public class SessionUser
 	{
 		public string Username { get; set; }
 
@@ -173,4 +174,4 @@ From the Couchbase.AspNet directory, run nuget pack as follows:
     <add name="couchbase-session" type="Couchbase.AspNet.SessionState.CouchbaseSessionStateProvider, Couchbase.AspNet" maxRetryCount="10" />
 
 ##Contributing##
-The Couchbase Caching and Session Providers is an open source software project which is depends upon community contributions and feedback. We welcome all forms of contribution good, bad or in-different!	
+The Couchbase Caching and Session Providers is an open source software project which is depends upon community contributions and feedback. We welcome all forms of contribution good, bad or in-different!
