@@ -2,7 +2,7 @@ Couchbase ASP.NET Integration
 ================
 
 [![Join the chat at https://gitter.im/couchbaselabs/couchbase-aspnet](https://badges.gitter.im/couchbaselabs/couchbase-aspnet.svg)](https://gitter.im/couchbaselabs/couchbase-aspnet?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build status](https://ci.appveyor.com/api/projects/status/7owuw1ofqnp48bcb?svg=true)](https://ci.appveyor.com/project/Couchbase/couchbase-aspnet)
+[![Build status](https://ci.appveyor.com/api/projects/status/7owuw1ofqnp48bcb/branch/master?svg=true)](https://ci.appveyor.com/project/Couchbase/couchbase-aspnet)
 
 This library provides infrastructure support for using [Couchbase Server](http://couchbase.com) and ASP.NET.
 
