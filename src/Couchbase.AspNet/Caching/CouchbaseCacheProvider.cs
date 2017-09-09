@@ -141,7 +141,6 @@ namespace Couchbase.AspNet.Caching
         /// Removes the specified entry from the output cache.
         /// </summary>
         /// <param name="key">The unique identifier for the entry to remove from the output cache.</param>
-        /// <exception cref="NotImplementedException"></exception>
         public override void Remove(string key)
         {
             CheckKey(key);
