@@ -349,7 +349,14 @@ namespace Couchbase.AspNet.UnitTests
                 provider.Remove("thekey");
             }
 
-            #endregion
+        }
+        #endregion
+
+        [Fact]
+        public void Test()
+        {
+            var result = Convert.ToBoolean("false");
+            Assert.True(result);
         }
     }
 }
