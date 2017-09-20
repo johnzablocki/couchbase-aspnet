@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Couchbase.AspNet.Caching;
 using Couchbase.Core;
@@ -71,6 +72,7 @@ namespace Couchbase.AspNet.UnitTests
 
         [Theory]
         [InlineData(true)]
+        [InlineData(false)]
         public async Task GetAsync_When_Key_DoesNotExist_Return_Null(bool throwOnError)
         {
             var result = new Mock<IOperationResult<dynamic>>();
@@ -86,6 +88,7 @@ namespace Couchbase.AspNet.UnitTests
 
         [Theory]
         [InlineData(true)]
+        [InlineData(false)]
         public void Get_When_Key_DoesNotExist_Return_Null(bool throwOnError)
         {
             var result = new Mock<IOperationResult<dynamic>>();
@@ -93,7 +96,7 @@ namespace Couchbase.AspNet.UnitTests
             result.Setup(x => x.Status).Returns(ResponseStatus.KeyNotFound);
 
             var bucket = new Mock<IBucket>();
-            bucket.Setup(x => x.Get<dynamic>(It.IsAny<string>())).Returns(result.Object);
+            bucket.Setup(x => x.GetAsync<dynamic>(It.IsAny<string>())).Returns(Task.FromResult(result.Object));
 
             var provider = new CouchbaseCacheProviderAsync(bucket.Object) { ThrowOnError = throwOnError };
             Assert.Null(provider.Get("thekey"));
@@ -241,6 +244,21 @@ namespace Couchbase.AspNet.UnitTests
             Assert.Throws<CouchbaseCacheException>(() => provider.Set("thekey", "thevalue", DateTime.MaxValue));
         }
 
+        [Fact]
+        public async Task SetAsync_When_Operation_Fails_Throw_CouchbaseCacheException()
+        {
+            var result = new Mock<IOperationResult<dynamic>>();
+            result.Setup(x => x.Success).Returns(false);
+            result.Setup(x => x.Status).Returns(ResponseStatus.OutOfMemory);
+
+            var bucket = new Mock<IBucket>();
+            bucket.Setup(x => x.UpsertAsync<dynamic>(It.IsAny<string>(), "thevalue")).Returns(Task.FromResult(result.Object));
+
+            var provider = new CouchbaseCacheProviderAsync(bucket.Object) { ThrowOnError = true };
+            await Assert.ThrowsAsync<CouchbaseCacheException>(() => provider.SetAsync("thekey", "thevalue", DateTime.MaxValue));
+        }
+
+
         #endregion
 
         #region Add tests
@@ -278,6 +296,36 @@ namespace Couchbase.AspNet.UnitTests
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
+        public async Task AddAsync_When_Operation_Fails_Throw_CouchbaseCacheException(bool throwOnError)
+        {
+            var result = new Mock<IOperationResult<dynamic>>();
+            result.Setup(x => x.Success).Returns(false);
+            result.Setup(x => x.Status).Returns(ResponseStatus.OutOfMemory);
+
+            var get = new Mock<IOperationResult<dynamic>>();
+            result.Setup(x => x.Success).Returns(false);
+            result.Setup(x => x.Status).Returns(ResponseStatus.KeyNotFound);
+
+            var bucket = new Mock<IBucket>();
+            bucket.Setup(x => x.Get<dynamic>(It.IsAny<string>())).Returns(get.Object);
+            bucket.Setup(x => x.Insert<dynamic>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()))
+                .Returns(result.Object);
+
+            var provider = new CouchbaseCacheProviderAsync(bucket.Object) { ThrowOnError = throwOnError };
+
+            if (throwOnError)
+            {
+               await Assert.ThrowsAsync<CouchbaseCacheException>(() => provider.AddAsync("thekey", "thevalue", DateTime.MaxValue));
+            }
+            else
+            {
+                Assert.Null(await provider.AddAsync("thekey", "thevalue", DateTime.MaxValue));
+            }
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
         public void Add_When_Key_DoesNotExst_Inserts_Value(bool throwOnError)
         {
             var get = new Mock<IOperationResult<dynamic>>();
@@ -297,7 +345,34 @@ namespace Couchbase.AspNet.UnitTests
                 .Returns(Task.FromResult(insert.Object)).Verifiable();
 
             var provider = new CouchbaseCacheProviderAsync(bucket.Object) {ThrowOnError = throwOnError};
-            var val = provider.AddAsync("key", "value", DateTime.MaxValue);
+            var val = provider.Add("key", "value", DateTime.MaxValue);
+            Assert.NotNull(val);
+            bucket.Verify();
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task AddAsync_When_Key_DoesNotExst_Inserts_Value(bool throwOnError)
+        {
+            var get = new Mock<IOperationResult<dynamic>>();
+            get.Setup(x => x.OpCode).Returns(OperationCode.Get);
+            get.Setup(x => x.Success).Returns(false);
+            get.Setup(x => x.Status).Returns(ResponseStatus.KeyNotFound);
+
+            var insert = new Mock<IOperationResult<dynamic>>();
+            insert.Setup(x => x.OpCode).Returns(OperationCode.Add);
+            insert.Setup(x => x.Success).Returns(true);
+            insert.Setup(x => x.Status).Returns(ResponseStatus.Success);
+            insert.Setup(x => x.Value).Returns("value");
+
+            var bucket = new Mock<IBucket>();
+            bucket.Setup(x => x.GetAsync<dynamic>(It.IsAny<string>())).Returns(Task.FromResult(get.Object)).Verifiable();
+            bucket.Setup(x => x.InsertAsync<dynamic>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()))
+                .Returns(Task.FromResult(insert.Object)).Verifiable();
+
+            var provider = new CouchbaseCacheProviderAsync(bucket.Object) { ThrowOnError = throwOnError };
+            var val = await provider.AddAsync("key", "value", DateTime.MaxValue);
             Assert.NotNull(val);
             bucket.Verify();
         }
@@ -318,6 +393,26 @@ namespace Couchbase.AspNet.UnitTests
 
             var provider = new CouchbaseCacheProviderAsync(bucket.Object) {ThrowOnError = throwOnError};
             var val = provider.AddAsync("key", "value", DateTime.MaxValue);
+            Assert.NotNull(val);
+            bucket.Verify();
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task AddAsync_When_Key_Exists_Gets_Value(bool throwOnError)
+        {
+            var get = new Mock<IOperationResult<dynamic>>();
+            get.Setup(x => x.OpCode).Returns(OperationCode.Get);
+            get.Setup(x => x.Success).Returns(true);
+            get.Setup(x => x.Status).Returns(ResponseStatus.Success);
+            get.Setup(x => x.Value).Returns("value");
+
+            var bucket = new Mock<IBucket>();
+            bucket.Setup(x => x.GetAsync<dynamic>(It.IsAny<string>())).Returns(Task.FromResult(get.Object)).Verifiable();
+
+            var provider = new CouchbaseCacheProviderAsync(bucket.Object) { ThrowOnError = throwOnError };
+            var val = await provider.AddAsync("key", "value", DateTime.MaxValue);
             Assert.NotNull(val);
             bucket.Verify();
         }
@@ -348,15 +443,33 @@ namespace Couchbase.AspNet.UnitTests
             {
                 provider.Remove("thekey");
             }
-
         }
-        #endregion
 
-        [Fact]
-        public void Test()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task RemoveAsync_When_Operation_Fails_Throw_CouchbaseCacheException(bool throwOnError)
         {
-            var result = Convert.ToBoolean("false");
-            Assert.True(result);
+            var result = new Mock<IOperationResult>();
+            result.Setup(x => x.Success).Returns(false);
+            result.Setup(x => x.Status).Returns(ResponseStatus.KeyNotFound);
+
+            var bucket = new Mock<IBucket>();
+            bucket.Setup(x => x.RemoveAsync(It.IsAny<string>())).Returns(Task.FromResult(result.Object));
+
+            var provider = new CouchbaseCacheProviderAsync(bucket.Object) { ThrowOnError = throwOnError };
+
+            if (throwOnError)
+            {
+               await Assert.ThrowsAsync<CouchbaseCacheException>(() => provider.RemoveAsync("thekey"));
+            }
+            else
+            {
+               await provider.RemoveAsync("thekey");
+            }
         }
+
+
+        #endregion
     }
 }
