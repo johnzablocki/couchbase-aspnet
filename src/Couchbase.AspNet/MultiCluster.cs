@@ -1,23 +1,61 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Specialized;
 using System.Configuration;
+using Couchbase.Authentication;
 using Couchbase.Configuration.Client;
-using Couchbase.Configuration.Client.Providers;
 using Couchbase.Core;
 using Couchbase.Core.Transcoders;
 
 namespace Couchbase.AspNet
 {
-    internal static class MultiCluster
+    public static class MultiCluster
     {
         private static readonly ConcurrentDictionary<string, ICluster> Clusters = new ConcurrentDictionary<string, ICluster>();
         private static readonly ConcurrentDictionary<string, IBucket> Buckets = new ConcurrentDictionary<string, IBucket>();
         private static readonly object LockObj = new object();
 
-        public static void Configure(string name, NameValueCollection config)
+        private static void ValidateTranscoder(ICluster cluster)
+        {
+            var transcoder = cluster.Configuration.Transcoder();
+            if (transcoder.GetType() != typeof(BinaryTranscoder))
+            {
+                var message = "The transcoder that cluster is configured with is a `{0}`; " +
+                    "ASP.NET only supports binary objects. Please use configure a `{1}` using ClientConfiguration.Transcoder.";
+
+                throw new NotSupportedException(string.Format(message, transcoder.GetType(), typeof(BinaryTranscoder)));
+            }
+        }
+
+        public static void AddCluster(ICluster cluster, string name)
+        {
+            ValidateTranscoder(cluster);
+            // ReSharper disable once InconsistentlySynchronizedField
+            Clusters.TryAdd(name, cluster);
+        }
+
+        public static void Configure(ClientConfiguration config, string name, IAuthenticator authenticator = null)
         {
             lock (LockObj)
             {
+                //override any Transcoders with the BinaryTranscoder - its required by ASP.NET
+                //to cast from the stored object to internal 'System.Web.Caching.CachedRawResponse' object
+                config.Transcoder = () => new BinaryTranscoder();
+                var cluster = new Cluster(config);
+                if (authenticator != null)
+                {
+                    cluster.Authenticate(authenticator);
+                }
+                AddCluster(cluster, name);
+            }
+        }
+
+        internal static void Configure(string name, NameValueCollection config)
+        {
+            lock (LockObj)
+            {
+                //override any Transcoders with the BinaryTranscoder - its required by ASP.NET
+                //to cast from the stored object to internal 'System.Web.Caching.CachedRawResponse' object
                 var section = (ICouchbaseClientDefinition)ConfigurationManager.GetSection(name);
                 var clientConfig = new ClientConfiguration(section) {Transcoder = () => new BinaryTranscoder()};
                 var cluster = new Cluster(clientConfig);
@@ -27,7 +65,7 @@ namespace Couchbase.AspNet
                 {
                     cluster.Authenticate(section.Username, section.Password);
                 }
-                Clusters.TryAdd(name, cluster);
+                AddCluster(cluster, name);
             }
         }
 
@@ -78,6 +116,8 @@ namespace Couchbase.AspNet
                 Clusters.Clear();
             }
         }
+
+        public static bool HasClusters => Clusters.Count > 0;
     }
 }
 

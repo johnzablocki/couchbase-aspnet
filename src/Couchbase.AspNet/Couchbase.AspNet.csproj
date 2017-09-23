@@ -66,6 +66,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Caching\BootstrapStrategy.cs" />
     <Compile Include="Caching\CouchbaseCacheException.cs" />
     <Compile Include="Caching\CouchbaseCacheProvider.cs" />
     <Compile Include="Caching\CouchbaseCacheProviderAsync.cs" />
