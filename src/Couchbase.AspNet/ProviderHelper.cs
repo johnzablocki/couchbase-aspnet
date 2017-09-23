@@ -1,5 +1,8 @@
-﻿using System.Collections.Specialized;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Configuration;
+using System.Linq;
 using Couchbase.Configuration.Client;
 using Couchbase.Configuration.Client.Providers;
 using Couchbase.Core;
@@ -34,6 +37,63 @@ namespace Couchbase.AspNet
             }
 
             return value;
+        }
+
+        /// <summary>
+        /// Gets and removes an value from the configuration section as a bool
+        /// </summary>
+        /// <param name="config">Name value collection to examine</param>
+        /// <param name="name">Name of the value to retrieve</param>
+        /// <param name="required">True if the value is required, false if optional</param>
+        /// <returns>Value returned from the configuration section, null if not found</returns>
+        public static bool? GetAndRemoveAsBool(NameValueCollection config, string name, bool required)
+        {
+            var value = GetAndRemove(config, name, required);
+            if (value == null) return null;
+            return Convert.ToBoolean(value);
+        }
+
+        /// <summary>
+        /// Gets and removes an value from the configuration section as a <see cref="int"/>
+        /// </summary>
+        /// <param name="config">Name value collection to examine</param>
+        /// <param name="name">Name of the value to retrieve</param>
+        /// <param name="required">True if the value is required, false if optional</param>
+        /// <returns>Value returned from the configuration section, null if not found</returns>
+        public static int? GetAndRemoveAsInt(NameValueCollection config, string name, bool required)
+        {
+            var value = GetAndRemove(config, name, required);
+            if (value == null) return null;
+            return Convert.ToInt32(value);
+        }
+
+        /// <summary>
+        /// Gets and removes an value from the configuration section as a <see cref="uint"/>
+        /// </summary>
+        /// <param name="config">Name value collection to examine</param>
+        /// <param name="name">Name of the value to retrieve</param>
+        /// <param name="required">True if the value is required, false if optional</param>
+        /// <returns>Value returned from the configuration section, null if not found</returns>
+        public static uint? GetAndRemoveAsUInt(NameValueCollection config, string name, bool required)
+        {
+            var value = GetAndRemove(config, name, required);
+            if (value == null) return null;
+            return Convert.ToUInt32(value);
+        }
+
+        /// <summary>
+        /// Gets and removes an value from the configuration section as a <see cref="Array"/> of <see cref="string"/>.
+        /// </summary>
+        /// <param name="config">Name value collection to examine</param>
+        /// <param name="name">Name of the value to retrieve</param>
+        /// <param name="seperator">The seperator to split on.</param>
+        /// <param name="required">True if the value is required, false if optional</param>
+        /// <returns>Value returned from the configuration section, null if not found</returns>
+        public static string[] GetAndRemoveAsArray(NameValueCollection config, string name, char seperator, bool required)
+        {
+            var value = GetAndRemove(config, name, required);
+            if(value == null) return new string[0];
+            return value.Split(seperator).ToArray();
         }
 
         /// <summary>

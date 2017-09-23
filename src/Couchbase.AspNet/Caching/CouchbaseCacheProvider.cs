@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
 using System.Web.Caching;
 using Common.Logging;
+using Couchbase.Authentication;
+using Couchbase.Configuration.Client;
 using Couchbase.Core;
 using Couchbase.IO;
 
@@ -20,6 +24,7 @@ namespace Couchbase.AspNet.Caching
         public bool ThrowOnError { get; set; }
         public string Prefix { get; set; }
         public string BucketName { get; set; }
+        public bool? AutoConfigure { get; set; }
 
         public CouchbaseCacheProvider(){ }
 
@@ -31,25 +36,99 @@ namespace Couchbase.AspNet.Caching
         public override void Initialize(string name, NameValueCollection config)
         {
             base.Initialize(name, config);
-
-            MultiCluster.Configure(name, config);
-
-            lock (_syncObj)
+            lock(_syncObj)
             {
-                // Create the bucket based off the name provided in the
-                BucketName = ProviderHelper.GetAndRemove(config, "bucket", false);
+                if (Enum.TryParse(ProviderHelper.GetAndRemove(config, "bootstrapStrategy", true), 
+                    true, out BootstrapStrategy configStrategy))
+                {
+                    switch (configStrategy)
+                    {
+                        case BootstrapStrategy.Inline:
+                            ConfigureInline(name, config);
+                            break;
+                        case BootstrapStrategy.Manual:
+                            if (!MultiCluster.HasClusters)
+                            {
+                                const string msg = "If configStrategy is manual, then a MultiCluster must be configured in Global.asax or Setup.cs";
+                                throw  new InvalidOperationException(msg);
+                            }
+                            break;
+                        case BootstrapStrategy.Section:
+                            ConfigureFromSection(name, config);
+                            break;
+                    }
+                }
 
-                _log.Debug("Creating bucket: " + BucketName);
-                _bucket = MultiCluster.GetBucket(name, BucketName);
+            }
+        }
+
+        private void ConfigureInline(string name, NameValueCollection config)
+        {
+            var prefix = ProviderHelper.GetAndRemove(config, "prefix", false);
+            var servers = ProviderHelper.GetAndRemoveAsArray(config, "servers", ';', false).Select(x => new Uri(x)).ToList();
+            var useSsl = ProviderHelper.GetAndRemoveAsBool(config, "useSsl", false);
+            var bucket = ProviderHelper.GetAndRemove(config, "bucket", true);
+            var operationLifespan = ProviderHelper.GetAndRemoveAsUInt(config, "operationLifespan", false);
+            var sendTimeout = ProviderHelper.GetAndRemoveAsInt(config, "sendTimeout", false);
+            var connectTimeout = ProviderHelper.GetAndRemoveAsInt(config, "connectTimeout", false);
+            var minPoolSize = ProviderHelper.GetAndRemoveAsInt(config, "minPoolSize", false);
+            var maxPoolSize = ProviderHelper.GetAndRemoveAsInt(config, "maxPoolSize", false);
+            var username = ProviderHelper.GetAndRemove(config, "username", false);
+            var password = ProviderHelper.GetAndRemove(config, "password", false);
+            var throwOnError = ProviderHelper.GetAndRemoveAsBool(config, "throwOnError", false);
+
+            ThrowOnError = throwOnError ?? false;
+            Prefix = prefix;
+
+            var clientConfig = new ClientConfiguration
+            {
+                DefaultOperationLifespan = operationLifespan ?? ClientConfiguration.Defaults.DefaultOperationLifespan,
+                UseSsl = useSsl ?? ClientConfiguration.Defaults.UseSsl,
+                Servers = servers.Any() ? servers : new List<Uri> {new Uri("http://localhost:8091")},
+                BucketConfigs = new Dictionary<string, BucketConfiguration>
+                {
+                    {
+                        bucket, new BucketConfiguration
+                        {
+                            BucketName = bucket,
+                            PoolConfiguration = new PoolConfiguration
+                            {
+                                MinSize = minPoolSize ?? PoolConfiguration.Defaults.MinSize,
+                                MaxSize = maxPoolSize ?? PoolConfiguration.Defaults.MaxSize,
+                                SendTimeout = sendTimeout ?? PoolConfiguration.Defaults.SendTimeout,
+                                ConnectTimeout = connectTimeout ?? PoolConfiguration.Defaults.ConnectTimeout
+                            }
+                        }
+                    }
+                }
+            };
+
+            IAuthenticator authenticator = null;
+            if (!string.IsNullOrWhiteSpace(username))
+            {
+                authenticator = new PasswordAuthenticator(username, password);
             }
 
-            if (bool.TryParse(ProviderHelper.GetAndRemove(config, "throwOnError", false),
-                out bool throwOnError))
+            MultiCluster.Configure(clientConfig, name, authenticator);
+
+            _log.Debug("Creating bucket: " + BucketName);
+            _bucket = MultiCluster.GetBucket(name, bucket);
+        }
+
+        private void ConfigureFromSection(string name, NameValueCollection config)
+        {
+            //use the config based approach if the user does not indicate that the are doing manual config of cluster
+            AutoConfigure = ProviderHelper.GetAndRemoveAsBool(config, "autoConfigure", false);
+            if (AutoConfigure.HasValue && AutoConfigure == true)
             {
-                ThrowOnError = throwOnError;
+                MultiCluster.Configure(name, config);
             }
 
-            Prefix = ProviderHelper.GetAndRemove(config, "prefix", false) ?? string.Empty;
+            // Create the bucket based off the name provided in the config
+            BucketName = ProviderHelper.GetAndRemove(config, "bucket", false);
+
+            _log.Debug("Creating bucket: " + BucketName);
+            _bucket = MultiCluster.GetBucket(name, BucketName);
         }
 
         /// <summary>
