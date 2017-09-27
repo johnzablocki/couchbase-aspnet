@@ -15,22 +15,22 @@ namespace Couchbase.AspNet.Caching
     /// A custom output-cache provider that uses Couchbase Server as the backing store.
     /// </summary>
     /// <seealso cref="System.Web.Caching.OutputCacheProvider" />
-    public class CouchbaseCacheProvider : OutputCacheProvider
+    // ReSharper disable once InheritdocConsiderUsage
+    public class CouchbaseCacheProvider : OutputCacheProvider, ICouchbaseOutputCacheProvider
     {
-        private object _syncObj = new object();
-        private IBucket _bucket;
-        private ILog _log = LogManager.GetLogger<CouchbaseCacheProvider>();
+        private readonly object _syncObj = new object();
+        private readonly ILog _log = LogManager.GetLogger<CouchbaseCacheProvider>();
         private const string EmptyKeyMessage = "'key' must be non-null, not empty or whitespace.";
+        public IBucket Bucket { get; set; }
         public bool ThrowOnError { get; set; }
         public string Prefix { get; set; }
         public string BucketName { get; set; }
-        public bool? AutoConfigure { get; set; }
 
         public CouchbaseCacheProvider(){ }
 
         public CouchbaseCacheProvider(IBucket bucket)
         {
-            _bucket = bucket;
+            Bucket = bucket;
         }
 
         public override void Initialize(string name, NameValueCollection config)
@@ -38,97 +38,9 @@ namespace Couchbase.AspNet.Caching
             base.Initialize(name, config);
             lock(_syncObj)
             {
-                if (Enum.TryParse(ProviderHelper.GetAndRemove(config, "bootstrapStrategy", true), 
-                    true, out BootstrapStrategy configStrategy))
-                {
-                    switch (configStrategy)
-                    {
-                        case BootstrapStrategy.Inline:
-                            ConfigureInline(name, config);
-                            break;
-                        case BootstrapStrategy.Manual:
-                            if (!MultiCluster.HasClusters)
-                            {
-                                const string msg = "If configStrategy is manual, then a MultiCluster must be configured in Global.asax or Setup.cs";
-                                throw  new InvalidOperationException(msg);
-                            }
-                            break;
-                        case BootstrapStrategy.Section:
-                            ConfigureFromSection(name, config);
-                            break;
-                    }
-                }
-
+                var bootStapper = new CacheBootStrapper();
+                bootStapper.Bootstrap(name, config, this);
             }
-        }
-
-        private void ConfigureInline(string name, NameValueCollection config)
-        {
-            var prefix = ProviderHelper.GetAndRemove(config, "prefix", false);
-            var servers = ProviderHelper.GetAndRemoveAsArray(config, "servers", ';', false).Select(x => new Uri(x)).ToList();
-            var useSsl = ProviderHelper.GetAndRemoveAsBool(config, "useSsl", false);
-            var bucket = ProviderHelper.GetAndRemove(config, "bucket", true);
-            var operationLifespan = ProviderHelper.GetAndRemoveAsUInt(config, "operationLifespan", false);
-            var sendTimeout = ProviderHelper.GetAndRemoveAsInt(config, "sendTimeout", false);
-            var connectTimeout = ProviderHelper.GetAndRemoveAsInt(config, "connectTimeout", false);
-            var minPoolSize = ProviderHelper.GetAndRemoveAsInt(config, "minPoolSize", false);
-            var maxPoolSize = ProviderHelper.GetAndRemoveAsInt(config, "maxPoolSize", false);
-            var username = ProviderHelper.GetAndRemove(config, "username", false);
-            var password = ProviderHelper.GetAndRemove(config, "password", false);
-            var throwOnError = ProviderHelper.GetAndRemoveAsBool(config, "throwOnError", false);
-
-            ThrowOnError = throwOnError ?? false;
-            Prefix = prefix;
-
-            var clientConfig = new ClientConfiguration
-            {
-                DefaultOperationLifespan = operationLifespan ?? ClientConfiguration.Defaults.DefaultOperationLifespan,
-                UseSsl = useSsl ?? ClientConfiguration.Defaults.UseSsl,
-                Servers = servers.Any() ? servers : new List<Uri> {new Uri("http://localhost:8091")},
-                BucketConfigs = new Dictionary<string, BucketConfiguration>
-                {
-                    {
-                        bucket, new BucketConfiguration
-                        {
-                            BucketName = bucket,
-                            PoolConfiguration = new PoolConfiguration
-                            {
-                                MinSize = minPoolSize ?? PoolConfiguration.Defaults.MinSize,
-                                MaxSize = maxPoolSize ?? PoolConfiguration.Defaults.MaxSize,
-                                SendTimeout = sendTimeout ?? PoolConfiguration.Defaults.SendTimeout,
-                                ConnectTimeout = connectTimeout ?? PoolConfiguration.Defaults.ConnectTimeout
-                            }
-                        }
-                    }
-                }
-            };
-
-            IAuthenticator authenticator = null;
-            if (!string.IsNullOrWhiteSpace(username))
-            {
-                authenticator = new PasswordAuthenticator(username, password);
-            }
-
-            MultiCluster.Configure(clientConfig, name, authenticator);
-
-            _log.Debug("Creating bucket: " + BucketName);
-            _bucket = MultiCluster.GetBucket(name, bucket);
-        }
-
-        private void ConfigureFromSection(string name, NameValueCollection config)
-        {
-            //use the config based approach if the user does not indicate that the are doing manual config of cluster
-            AutoConfigure = ProviderHelper.GetAndRemoveAsBool(config, "autoConfigure", false);
-            if (AutoConfigure.HasValue && AutoConfigure == true)
-            {
-                MultiCluster.Configure(name, config);
-            }
-
-            // Create the bucket based off the name provided in the config
-            BucketName = ProviderHelper.GetAndRemove(config, "bucket", false);
-
-            _log.Debug("Creating bucket: " + BucketName);
-            _bucket = MultiCluster.GetBucket(name, BucketName);
         }
 
         /// <summary>
@@ -142,12 +54,13 @@ namespace Couchbase.AspNet.Caching
         /// <exception cref="InvalidOperationException"></exception>
         public override object Get(string key)
         {
+            _log.Debug("Cache.Get(" + key + ")");
             CheckKey(key);
 
             try
             {
                 // get the item
-                var result = _bucket.Get<object>(key);
+                var result = Bucket.Get<object>(key);
                 if (result.Success)
                 {
                     return result.Value;
@@ -183,21 +96,23 @@ namespace Couchbase.AspNet.Caching
         /// Add method returns it.</remarks>
         public override object Add(string key, object entry, DateTime utcExpiry)
         {
+            _log.Debug("Cache.Add(" + key + ", " + entry + ", " + utcExpiry + ")");
             CheckKey(key);
 
             try
             {
                 //return the value if the key exists
-                var exists = _bucket.Get<object>(key);
+                var exists = Bucket.Get<object>(key);
                 if (exists.Success)
                 {
                     return exists.Value;
                 }
+                if (utcExpiry == DateTime.MaxValue) return null;
 
-                var expiration = DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay;
+                var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
 
                 //no key so add the value and return it.
-                var result = _bucket.Insert(key, entry, expiration);
+                var result = Bucket.Insert(key, entry, expiration);
                 if (result.Success)
                 {
                     return entry;
@@ -222,13 +137,14 @@ namespace Couchbase.AspNet.Caching
         /// <exception cref="InvalidOperationException"></exception>
         public override void Set(string key, object entry, DateTime utcExpiry)
         {
+            _log.Debug("Cache.Set(" + key + ", " + entry + ", " + utcExpiry + ")");
             CheckKey(key);
 
             try
             {
-                var expiration = DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay;
+                var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
 
-                var result = _bucket.Upsert(key, entry, expiration);
+                var result = Bucket.Upsert(key, entry, expiration);
                 if (result.Success) return;
                 LogAndOrThrow(result, key);
             }
@@ -244,11 +160,12 @@ namespace Couchbase.AspNet.Caching
         /// <param name="key">The unique identifier for the entry to remove from the output cache.</param>
         public override void Remove(string key)
         {
+           _log.Debug("Cache.Remove(" + key + ")");
             CheckKey(key);
 
             try
             {
-                var result = _bucket.Remove(key);
+                var result = Bucket.Remove(key);
                 if (result.Success) return;
                 LogAndOrThrow(result, key);
             }
