@@ -12,23 +12,31 @@ namespace Couchbase.AspNet.Caching
     /// <summary>
     /// A custom asynchronous output-cache provider that uses Couchbase Server as the backing store.
     /// </summary>
-    public class CouchbaseCacheProviderAsync : OutputCacheProviderAsync
+    public class CouchbaseCacheProviderAsync : OutputCacheProviderAsync, ICouchbaseOutputCacheProvider
     {
-        private IBucket _bucket;
+        private readonly object _syncObj = new object();
         private ILog _log = LogManager.GetLogger<CouchbaseCacheProvider>();
         private const string EmptyKeyMessage = "'key' must be non-null, not empty or whitespace.";
+        public IBucket Bucket { get; set; }
         public bool ThrowOnError { get; set; }
+        public string Prefix { get; set; }
+        public string BucketName { get; set; }
 
         public CouchbaseCacheProviderAsync() { }
 
         public CouchbaseCacheProviderAsync(IBucket bucket)
         {
-            _bucket = bucket;
+            Bucket = bucket;
         }
 
         public override void Initialize(string name, NameValueCollection config)
         {
             base.Initialize(name, config);
+            lock (_syncObj)
+            {
+                var bootStapper = new CacheBootStrapper();
+                bootStapper.Bootstrap(name, config, this);
+            }
         }
 
         /// <summary>
@@ -104,7 +112,7 @@ namespace Couchbase.AspNet.Caching
             try
             {
                 // get the item
-                var result = await _bucket.GetAsync<dynamic>(key).ContinueOnAnyContext();
+                var result = await Bucket.GetAsync<dynamic>(key).ContinueOnAnyContext();
                 if (result.Success)
                 {
                     return result.Value;
@@ -145,7 +153,7 @@ namespace Couchbase.AspNet.Caching
             try
             {
                 //return the value if the key exists
-                var exists = await _bucket.GetAsync<object>(key).ContinueOnAnyContext();
+                var exists = await Bucket.GetAsync<object>(key).ContinueOnAnyContext();
                 if (exists.Success)
                 {
                     return exists.Value;
@@ -154,7 +162,7 @@ namespace Couchbase.AspNet.Caching
                 var expiration = DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay;
 
                 //no key so add the value and return it.
-                var result = await _bucket.InsertAsync(key, entry, expiration).ContinueOnAnyContext();
+                var result = await Bucket.InsertAsync(key, entry, expiration).ContinueOnAnyContext();
                 if (result.Success)
                 {
                     return entry;
@@ -184,7 +192,7 @@ namespace Couchbase.AspNet.Caching
             {
                 var expiration = DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay;
 
-                var result = await _bucket.UpsertAsync(key, entry, expiration).ContinueOnAnyContext();
+                var result = await Bucket.UpsertAsync(key, entry, expiration).ContinueOnAnyContext();
                 if (result.Success) return;
                 LogAndOrThrow(result, key);
             }
@@ -204,7 +212,7 @@ namespace Couchbase.AspNet.Caching
 
             try
             {
-                var result = await _bucket.RemoveAsync(key).ContinueOnAnyContext();
+                var result = await Bucket.RemoveAsync(key).ContinueOnAnyContext();
                 if (result.Success) return;
                 LogAndOrThrow(result, key);
             }

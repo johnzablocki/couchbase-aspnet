@@ -21,6 +21,27 @@ namespace Couchbase.AspNet
         /// <param name="name">Name of the value to retrieve</param>
         /// <param name="required">True if the value is required, false if optional</param>
         /// <returns>Value returned from the configuration section, null if not found</returns>
+        public static string Get(NameValueCollection config, string name, bool required)
+        {
+            var value = config[name];
+            if (value == null)
+            {
+                if (required)
+                {
+                    throw new ConfigurationErrorsException("Missing parameter: " + name);
+                }
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Gets and removes an value from the configuration section
+        /// </summary>
+        /// <param name="config">Name value collection to examine</param>
+        /// <param name="name">Name of the value to retrieve</param>
+        /// <param name="required">True if the value is required, false if optional</param>
+        /// <returns>Value returned from the configuration section, null if not found</returns>
         public static string GetAndRemove(NameValueCollection config, string name, bool required)
         {
             var value = config[name];

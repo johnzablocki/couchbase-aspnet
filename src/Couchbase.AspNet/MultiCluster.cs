@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Specialized;
 using System.Configuration;
+using System.Linq;
 using Couchbase.Authentication;
 using Couchbase.Configuration.Client;
 using Couchbase.Core;
@@ -46,6 +47,7 @@ namespace Couchbase.AspNet
                 {
                     cluster.Authenticate(authenticator);
                 }
+
                 AddCluster(cluster, name);
             }
         }
@@ -65,7 +67,44 @@ namespace Couchbase.AspNet
                 {
                     cluster.Authenticate(section.Username, section.Password);
                 }
+                else
+                {
+                    //if pre-5.0 require the use of the password at the BucketDefinition level first
+                    var bucketDefinition = section.Buckets.FirstOrDefault();
+                    if (bucketDefinition != null)
+                    {
+                        var password = bucketDefinition.Password ?? section.Password;
+                        if (!string.IsNullOrWhiteSpace(password))
+                        {
+                            cluster.Authenticate(new ClassicAuthenticator(bucketDefinition.Name, password));
+                        }
+                    }
+                }
+
                 AddCluster(cluster, name);
+            }
+        }
+
+        public static IBucket GetBucket(string clusterName, string bucketName, string password)
+        {
+            lock (LockObj)
+            {
+                var bucketAlias = clusterName + bucketName;
+                if (Buckets.TryGetValue(bucketAlias, out var bucket))
+                {
+                    return bucket;
+                }
+
+                if (Clusters.TryGetValue(clusterName, out var cluster))
+                {
+                    bucket = password == null ?
+                        cluster.OpenBucket(bucketName) :
+                        cluster.OpenBucket(bucketName, password);
+
+                    Buckets.TryAdd(bucketAlias, bucket);
+                }
+
+                return bucket;
             }
         }
 
@@ -74,12 +113,12 @@ namespace Couchbase.AspNet
             lock (LockObj)
             {
                 var bucketAlias = clusterName + bucketName;
-                if (Buckets.TryGetValue(bucketAlias, out IBucket bucket))
+                if (Buckets.TryGetValue(bucketAlias, out var bucket))
                 {
                     return bucket;
                 }
 
-                if (Clusters.TryGetValue(clusterName, out ICluster cluster))
+                if (Clusters.TryGetValue(clusterName, out var cluster))
                 {
                     bucket = cluster.OpenBucket(bucketName);
                     Buckets.TryAdd(bucketAlias, bucket);
