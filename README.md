@@ -23,7 +23,7 @@ This library provides infrastructure support for using [Couchbase Server](http:/
 
 ## Caching and Session Providers for .NET Full Framework 4.5 and 4.6.2 ##
 
-###Couchbase Output Cache###
+### Couchbase Output Cache ###
 An output cache stores the output of pages, controls and HTTP responses. The default implementation in ASP.NET is to store in-memory on the server, which forces the front-end application (Web) servers to use more resources. The CouchbaseOutputCacheProvider is a distributed cache provider, which allows you to override the default ASP.NET Output Cache with a Couchbase-based implementation.
 
 To use the `CouchbaseOutputCacheProvider` you will need to either build from source or use the NuGet package once it's available (a beta version for 3.0 will be released shortly). Once you have the dependency resolved, you will configure the custom OutputCacheProvider just like you do any other custom output cache provider in your Web.Config file:
@@ -136,10 +136,10 @@ Here is an example with every configuration value set:
 
 Note that in most cases, the default configuration is the best for `operationLifeSpan`, `sendTimeout`, `connectionTimeout`. For `maxPoolSize`, you should start with the default settings and then increase the value if needed. In general, smaller pool sizes are better than very large (50, 100, etc) pools.
 
-####Bootstrapping from `section`####
+#### Bootstrapping from `section` ####
 Bootstrapping from Web.Config section is the way that version 2.0 of Couchbase providers worked. It uses the `CouchbaseClientSection` API that the .NET SDK exposes to allow the configuration to be done in a configuration section. This is illustrated in the first example above, in the "Couchbase Output Cache" section. You can read all about configuring the SDK on the main Couchbase site [here](https://developer.couchbase.com/documentation/server/5.0/sdk/dotnet/client-settings.html).
 
-####Programmatic or `manual` bootstrapping####
+#### Programmatic or `manual` bootstrapping ####
 This is a new feature for 3.0 which originally existed in the 1.0 version of the provider. In it's simplest terms, instead of supplying the configuration information inline or as a config section, you problematically configure the SDK somewhere in your application that will fire before the provider is initialized. To make it easier to use multiple clusters, there is a special `MultiCluster` class which holds the references to the `Cluster` and `IBucket` instances that the provider is going to use. You still need to use the Web.Config to declare the CouchbaseOutputCacheProvider and you will still need to add `bucket` and `bootstrapStrategy` variables. 
 
 Here is an example, starting with the Web.Config:
@@ -185,7 +185,7 @@ Now, in your Global.asax you can initialize the client that the provider will us
 
 It's important to note that you will still need to specify the name of the provider so that this cluster instance can be mapped to it. In this case, then name chosen is "couchbase-cache", but could be anything you wish.
 
-###Using CouchbaseOutputCacheProvider in your application###
+### Using CouchbaseOutputCacheProvider in your application ###
 Using the provider in your application is the same as you using the default ASP.NET caching provider. The `OutputCache` attribute is your main weapon here:
 
  	public class HomeController : Controller
@@ -202,8 +202,7 @@ Using the provider in your application is the same as you using the default ASP.
 
 You can read all about using the OutputCache [here](https://docs.microsoft.com/en-us/aspnet/mvc/overview/older-versions-1/controllers-and-routing/improving-performance-with-output-caching-cs).
 
-
-## NEW! Asynchronous Output Caching!
+## NEW! Asynchronous Output Caching! ##
 The .NET Framework Version 4.6.2 introduced a new asynchronous Output Cache provider class called `OutputCacheProviderAsync` which inherits from `OutputCacheProvider` and adds async methods. We have added a Couchbase specific implementation of this class in version 3.0!
 
 There are a couple of steps to enable the asynchronous provider:
