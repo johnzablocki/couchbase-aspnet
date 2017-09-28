@@ -202,7 +202,6 @@ Using the provider in your application is the same as you using the default ASP.
 
 You can read all about using the OutputCache [here](https://docs.microsoft.com/en-us/aspnet/mvc/overview/older-versions-1/controllers-and-routing/improving-performance-with-output-caching-cs).
 
-
 ## NEW! Asynchronous Output Caching! ##
 The .NET Framework Version 4.6.2 introduced a new asynchronous Output Cache provider class called `OutputCacheProviderAsync` which inherits from `OutputCacheProvider` and adds async methods. We have added a Couchbase specific implementation of this class in version 3.0!
 
