@@ -1,34 +1,30 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Linq;
+using System.Threading.Tasks;
 using System.Web.Caching;
 using Common.Logging;
-using Couchbase.Authentication;
-using Couchbase.Configuration.Client;
 using Couchbase.Core;
 using Couchbase.IO;
+using Couchbase.Utils;
 
 namespace Couchbase.AspNet.Caching
 {
     /// <summary>
-    /// A custom output-cache provider that uses Couchbase Server as the backing store.
+    /// A custom asynchronous output-cache provider that uses Couchbase Server as the backing store.
     /// </summary>
-    /// <seealso cref="System.Web.Caching.OutputCacheProvider" />
-    // ReSharper disable once InheritdocConsiderUsage
-    public class CouchbaseCacheProvider : OutputCacheProvider, ICouchbaseOutputCacheProvider
+    public class CouchbaseOutputCacheProviderAsync : OutputCacheProviderAsync, ICouchbaseOutputCacheProvider
     {
         private readonly object _syncObj = new object();
-        private readonly ILog _log = LogManager.GetLogger<CouchbaseCacheProvider>();
+        private ILog _log = LogManager.GetLogger<CouchbaseOutputCacheProvider>();
         private const string EmptyKeyMessage = "'key' must be non-null, not empty or whitespace.";
         public IBucket Bucket { get; set; }
         public bool ThrowOnError { get; set; }
         public string Prefix { get; set; }
         public string BucketName { get; set; }
 
-        public CouchbaseCacheProvider(){ }
+        public CouchbaseOutputCacheProviderAsync() { }
 
-        public CouchbaseCacheProvider(IBucket bucket)
+        public CouchbaseOutputCacheProviderAsync(IBucket bucket)
         {
             Bucket = bucket;
         }
@@ -36,7 +32,7 @@ namespace Couchbase.AspNet.Caching
         public override void Initialize(string name, NameValueCollection config)
         {
             base.Initialize(name, config);
-            lock(_syncObj)
+            lock (_syncObj)
             {
                 var bootStapper = new CacheBootStrapper();
                 bootStapper.Bootstrap(name, config, this);
@@ -55,27 +51,7 @@ namespace Couchbase.AspNet.Caching
         public override object Get(string key)
         {
             _log.Debug("Cache.Get(" + key + ")");
-            CheckKey(key);
-
-            try
-            {
-                // get the item
-                var result = Bucket.Get<object>(key);
-                if (result.Success)
-                {
-                    return result.Value;
-                }
-                if (result.Status == ResponseStatus.KeyNotFound)
-                {
-                    return null;
-                }
-                LogAndOrThrow(result, key);
-            }
-            catch (Exception e)
-            {
-                LogAndOrThrow(e, key);
-            }
-            return null;
+            return GetAsync(key).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -94,36 +70,11 @@ namespace Couchbase.AspNet.Caching
         /// that value. The provider must not store the data passed by using the Add method parameters. The
         /// Add method stores the data if it is not already in the cache. If the data is in the cache, the
         /// Add method returns it.</remarks>
-         public override object Add(string key, object entry, DateTime utcExpiry)
-         {
-             _log.Debug("Cache.Add(" + key + ", " + entry + ", " + utcExpiry + ")");
-             CheckKey(key);
-
-             try
-             {
-                 //return the value if the key exists
-                 var exists = Bucket.Get<object>(key);
-                 if (exists.Success)
-                 {
-                     return exists.Value;
-                 }
-
-                 var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
-
-                 //no key so add the value and return it.
-                 var result = Bucket.Insert(key, entry, expiration);
-                 if (result.Success)
-                 {
-                     return entry;
-                 }
-                 LogAndOrThrow(result, key);
-             }
-             catch (Exception e)
-             {
-                 LogAndOrThrow(e, key);
-             }
-             return null;
-         }
+        public override object Add(string key, object entry, DateTime utcExpiry)
+        {
+            _log.Debug("Cache.Add(" + key + ", " + entry + ", " + utcExpiry + ")");
+            return AddAsync(key, entry, utcExpiry).GetAwaiter().GetResult();
+        }
 
         /// <summary>
         /// Inserts the specified entry into the output cache, overwriting the entry if it is already cached.
@@ -136,13 +87,118 @@ namespace Couchbase.AspNet.Caching
         public override void Set(string key, object entry, DateTime utcExpiry)
         {
             _log.Debug("Cache.Set(" + key + ", " + entry + ", " + utcExpiry + ")");
+            SetAsync(key, entry, utcExpiry).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Removes the specified entry from the output cache.
+        /// </summary>
+        /// <param name="key">The unique identifier for the entry to remove from the output cache.</param>
+        public override void Remove(string key)
+        {
+            RemoveAsync(key).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Returns a reference to the specified entry in the output cache asynchronously.
+        /// </summary>
+        /// <param name="key">A unique identifier for a cached entry in the output cache.</param>
+        /// <returns>
+        /// The <paramref name="key" /> value that identifies the specified entry in the cache, or null if the specified entry is not in the cache.
+        /// </returns>
+        /// <exception cref="ArgumentException">'key' must be non-null, not empty or whitespace.</exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        public override async Task<object> GetAsync(string key)
+        {
+            _log.Debug("Cache.GetAsync(" + key + ")");
+            CheckKey(key);
+
+            try
+            {
+                // get the item
+                var result = await Bucket.GetAsync<dynamic>(key).ContinueOnAnyContext();
+                if (result.Success)
+                {
+                    return result.Value;
+                }
+                if (result.Status == ResponseStatus.KeyNotFound)
+                {
+                    return null;
+                }
+                LogAndOrThrow(result, key);
+            }
+            catch (Exception e)
+            {
+                LogAndOrThrow(e, key);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Inserts the specified entry into the output cache asynchronously.
+        /// </summary>
+        /// <param name="key">A unique identifier for <paramref name="entry" />.</param>
+        /// <param name="entry">The content to add to the output cache.</param>
+        /// <param name="utcExpiry">The time and date on which the cached entry expires.</param>
+        /// <returns>
+        /// A reference to the specified provider.
+        /// </returns>
+        /// <exception cref="ArgumentException">'key' must be non-null, not empty or whitespace.</exception>
+        /// <exception cref="ArgumentNullException">entry</exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        /// <remarks>If there is already a value in the cache for the specified key, the provider must return
+        /// that value. The provider must not store the data passed by using the Add method parameters. The
+        /// Add method stores the data if it is not already in the cache. If the data is in the cache, the
+        /// Add method returns it.</remarks>
+        public override async Task<object> AddAsync(string key, object entry, DateTime utcExpiry)
+        {
+            _log.Debug("Cache.AddAsync(" + key + ", " + entry + ", " + utcExpiry + ")");
+            CheckKey(key);
+
+            try
+            {
+                //return the value if the key exists
+                var exists = await Bucket.GetAsync<object>(key).ContinueOnAnyContext();
+                if (exists.Success)
+                {
+                    return exists.Value;
+                }
+
+                var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
+
+                //no key so add the value and return it.
+                var result = await Bucket.InsertAsync(key, entry, expiration).ContinueOnAnyContext();
+                if (result.Success)
+                {
+                    return entry;
+                }
+                LogAndOrThrow(result, key);
+            }
+            catch (Exception e)
+            {
+                LogAndOrThrow(e, key);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Inserts the specified entry into the output cache, overwriting the entry if it is already cached asychronously.
+        /// </summary>
+        /// <param name="key">A unique identifier for <paramref name="entry" />.</param>
+        /// <param name="entry">The content to add to the output cache.</param>
+        /// <param name="utcExpiry">The time and date on which the cached <paramref name="entry" /> expires.</param>
+        /// <exception cref="ArgumentException">'key' must be non-null, not empty or whitespace.</exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        public override async Task SetAsync(string key, object entry, DateTime utcExpiry)
+        {
+            _log.Debug("Cache.SetAsync(" + key + ", " + entry + ", " + utcExpiry + ")");
             CheckKey(key);
 
             try
             {
                 var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
 
-                var result = Bucket.Upsert(key, entry, expiration);
+                var result = await Bucket.UpsertAsync(key, entry, expiration).ContinueOnAnyContext();
                 if (result.Success) return;
                 LogAndOrThrow(result, key);
             }
@@ -153,17 +209,16 @@ namespace Couchbase.AspNet.Caching
         }
 
         /// <summary>
-        /// Removes the specified entry from the output cache.
+        /// Removes the specified entry from the output cache asynchronously.
         /// </summary>
         /// <param name="key">The unique identifier for the entry to remove from the output cache.</param>
-        public override void Remove(string key)
+        public override async Task RemoveAsync(string key)
         {
-           _log.Debug("Cache.Remove(" + key + ")");
             CheckKey(key);
 
             try
             {
-                var result = Bucket.Remove(key);
+                var result = await Bucket.RemoveAsync(key).ContinueOnAnyContext();
                 if (result.Success) return;
                 LogAndOrThrow(result, key);
             }
@@ -179,13 +234,13 @@ namespace Couchbase.AspNet.Caching
         /// </summary>
         /// <param name="e">The e.</param>
         /// <param name="key">The key.</param>
-        /// <exception cref="Couchbase.AspNet.Caching.CouchbaseCacheException"></exception>
+        /// <exception cref="Couchbase.AspNet.Caching.CouchbaseOutputCacheException"></exception>
         private void LogAndOrThrow(Exception e, string key)
         {
             _log.Error($"Could not retrieve, remove or write key '{key}' - reason: {e}");
             if (ThrowOnError)
             {
-                throw new CouchbaseCacheException($"Could not retrieve, remove or write key '{key}'", e);
+                throw new CouchbaseOutputCacheException($"Could not retrieve, remove or write key '{key}'", e);
             }
         }
 
