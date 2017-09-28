@@ -50,6 +50,7 @@ namespace Couchbase.AspNet.Caching
         /// <exception cref="InvalidOperationException"></exception>
         public override object Get(string key)
         {
+            _log.Debug("Cache.Get(" + key + ")");
             return GetAsync(key).GetAwaiter().GetResult();
         }
 
@@ -71,6 +72,7 @@ namespace Couchbase.AspNet.Caching
         /// Add method returns it.</remarks>
         public override object Add(string key, object entry, DateTime utcExpiry)
         {
+            _log.Debug("Cache.Add(" + key + ", " + entry + ", " + utcExpiry + ")");
             return AddAsync(key, entry, utcExpiry).GetAwaiter().GetResult();
         }
 
@@ -84,6 +86,7 @@ namespace Couchbase.AspNet.Caching
         /// <exception cref="InvalidOperationException"></exception>
         public override void Set(string key, object entry, DateTime utcExpiry)
         {
+            _log.Debug("Cache.Set(" + key + ", " + entry + ", " + utcExpiry + ")");
             SetAsync(key, entry, utcExpiry).GetAwaiter().GetResult();
         }
 
@@ -107,6 +110,7 @@ namespace Couchbase.AspNet.Caching
         /// <exception cref="InvalidOperationException"></exception>
         public override async Task<object> GetAsync(string key)
         {
+            _log.Debug("Cache.GetAsync(" + key + ")");
             CheckKey(key);
 
             try
@@ -148,6 +152,7 @@ namespace Couchbase.AspNet.Caching
         /// Add method returns it.</remarks>
         public override async Task<object> AddAsync(string key, object entry, DateTime utcExpiry)
         {
+            _log.Debug("Cache.AddAsync(" + key + ", " + entry + ", " + utcExpiry + ")");
             CheckKey(key);
 
             try
@@ -159,7 +164,7 @@ namespace Couchbase.AspNet.Caching
                     return exists.Value;
                 }
 
-                var expiration = DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay;
+                var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
 
                 //no key so add the value and return it.
                 var result = await Bucket.InsertAsync(key, entry, expiration).ContinueOnAnyContext();
@@ -186,11 +191,12 @@ namespace Couchbase.AspNet.Caching
         /// <exception cref="InvalidOperationException"></exception>
         public override async Task SetAsync(string key, object entry, DateTime utcExpiry)
         {
+            _log.Debug("Cache.SetAsync(" + key + ", " + entry + ", " + utcExpiry + ")");
             CheckKey(key);
 
             try
             {
-                var expiration = DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay;
+                var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
 
                 var result = await Bucket.UpsertAsync(key, entry, expiration).ContinueOnAnyContext();
                 if (result.Success) return;

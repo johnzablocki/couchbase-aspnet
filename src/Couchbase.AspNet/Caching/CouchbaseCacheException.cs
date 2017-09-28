@@ -6,6 +6,7 @@ namespace Couchbase.AspNet.Caching
     /// Thrown when an exception is handled and rethrown if <see cref="CouchbaseCacheProvider.ThrowOnError"/> is <c>true</c>.
     /// </summary>
     /// <seealso cref="System.Exception" />
+    // ReSharper disable once InheritdocConsiderUsage
     public class CouchbaseCacheException : Exception
     {
         public CouchbaseCacheException()
