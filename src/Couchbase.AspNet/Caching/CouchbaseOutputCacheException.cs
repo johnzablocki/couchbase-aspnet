@@ -3,22 +3,22 @@
 namespace Couchbase.AspNet.Caching
 {
     /// <summary>
-    /// Thrown when an exception is handled and rethrown if <see cref="CouchbaseCacheProvider.ThrowOnError"/> is <c>true</c>.
+    /// Thrown when an exception is handled and rethrown if <see cref="CouchbaseOutputCacheProvider.ThrowOnError"/> is <c>true</c>.
     /// </summary>
     /// <seealso cref="System.Exception" />
     // ReSharper disable once InheritdocConsiderUsage
-    public class CouchbaseCacheException : Exception
+    public class CouchbaseOutputCacheException : Exception
     {
-        public CouchbaseCacheException()
+        public CouchbaseOutputCacheException()
         {
         }
 
-        public CouchbaseCacheException(string message)
+        public CouchbaseOutputCacheException(string message)
             : base(message)
         {
         }
 
-        public CouchbaseCacheException(string message, Exception innerException)
+        public CouchbaseOutputCacheException(string message, Exception innerException)
             : base(message, innerException)
         {
         }

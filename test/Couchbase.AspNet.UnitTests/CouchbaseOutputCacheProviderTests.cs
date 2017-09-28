@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Couchbase.AspNet.UnitTests
 {
-    public class CouchbaseCacheProviderTests
+    public class CouchbaseOutputCacheProviderTests
     {
         #region Get tests
 
@@ -26,7 +26,7 @@ namespace Couchbase.AspNet.UnitTests
             var bucket = new Mock<IBucket>();
             bucket.Setup(x => x.Get<dynamic>(It.IsAny<string>())).Throws<MissingKeyException>();
 
-            var provider = new CouchbaseCacheProvider(bucket.Object)
+            var provider = new CouchbaseOutputCacheProvider(bucket.Object)
             {
                 ThrowOnError = throwOnError
             };
@@ -52,7 +52,7 @@ namespace Couchbase.AspNet.UnitTests
             var bucket = new Mock<IBucket>();
             bucket.Setup(x => x.Get<dynamic>(It.IsAny<string>())).Returns(result.Object);
 
-            var provider = new CouchbaseCacheProvider(bucket.Object) {ThrowOnError = throwOnError};
+            var provider = new CouchbaseOutputCacheProvider(bucket.Object) {ThrowOnError = throwOnError};
             Assert.Null(provider.Get("thekey"));
         }
 
@@ -62,13 +62,13 @@ namespace Couchbase.AspNet.UnitTests
             var result = new Mock<IOperationResult<dynamic>>();
             result.Setup(x => x.Success).Returns(false);
             result.Setup(x => x.Status).Returns(ResponseStatus.ClientFailure);
-            result.Setup(x => x.Exception).Returns(new CouchbaseCacheException());
+            result.Setup(x => x.Exception).Returns(new CouchbaseOutputCacheException());
 
             var bucket = new Mock<IBucket>();
             bucket.Setup(x => x.Get<dynamic>(It.IsAny<string>())).Returns(result.Object);
 
-            var provider = new CouchbaseCacheProvider(bucket.Object) {ThrowOnError = true};
-            Assert.Throws<CouchbaseCacheException>(() => provider.Get("thekey"));
+            var provider = new CouchbaseOutputCacheProvider(bucket.Object) {ThrowOnError = true};
+            Assert.Throws<CouchbaseOutputCacheException>(() => provider.Get("thekey"));
         }
 
         [Fact]
@@ -81,8 +81,8 @@ namespace Couchbase.AspNet.UnitTests
             var bucket = new Mock<IBucket>();
             bucket.Setup(x => x.Get<dynamic>(It.IsAny<string>())).Returns(result.Object);
 
-            var provider = new CouchbaseCacheProvider(bucket.Object) {ThrowOnError = true};
-            Assert.Throws<CouchbaseCacheException>(() => provider.Get("thekey"));
+            var provider = new CouchbaseOutputCacheProvider(bucket.Object) {ThrowOnError = true};
+            Assert.Throws<CouchbaseOutputCacheException>(() => provider.Get("thekey"));
         }
 
         #endregion
@@ -98,7 +98,7 @@ namespace Couchbase.AspNet.UnitTests
         [InlineData(" ", false)]
         public void Set_When_Key_IsNullEmptyOrSpace_Throw_ArgumentException(string key, bool throwOneError)
         {
-            var provider = new CouchbaseCacheProvider(null) {ThrowOnError = throwOneError};
+            var provider = new CouchbaseOutputCacheProvider(null) {ThrowOnError = throwOneError};
 
             if (throwOneError)
             {
@@ -118,8 +118,8 @@ namespace Couchbase.AspNet.UnitTests
             bucket.Setup(x => x.Upsert(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<TimeSpan>()))
                 .Returns(result.Object);
 
-            var provider = new CouchbaseCacheProvider(bucket.Object) {ThrowOnError = true};
-            Assert.Throws<CouchbaseCacheException>(() => provider.Set("thekey", new object(), DateTime.Now));
+            var provider = new CouchbaseOutputCacheProvider(bucket.Object) {ThrowOnError = true};
+            Assert.Throws<CouchbaseOutputCacheException>(() => provider.Set("thekey", new object(), DateTime.Now));
         }
 
         [Fact]
@@ -132,8 +132,8 @@ namespace Couchbase.AspNet.UnitTests
             var bucket = new Mock<IBucket>();
             bucket.Setup(x => x.Upsert<dynamic>(It.IsAny<string>(), "thevalue")).Returns(result.Object);
 
-            var provider = new CouchbaseCacheProvider(bucket.Object) {ThrowOnError = true};
-            Assert.Throws<CouchbaseCacheException>(() => provider.Set("thekey", "thevalue", DateTime.MaxValue));
+            var provider = new CouchbaseOutputCacheProvider(bucket.Object) {ThrowOnError = true};
+            Assert.Throws<CouchbaseOutputCacheException>(() => provider.Set("thekey", "thevalue", DateTime.MaxValue));
         }
 
         #endregion
@@ -158,11 +158,11 @@ namespace Couchbase.AspNet.UnitTests
             bucket.Setup(x => x.Insert<dynamic>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()))
                 .Returns(result.Object);
 
-            var provider = new CouchbaseCacheProvider(bucket.Object) {ThrowOnError = throwOnError};
+            var provider = new CouchbaseOutputCacheProvider(bucket.Object) {ThrowOnError = throwOnError};
 
             if (throwOnError)
             {
-                Assert.Throws<CouchbaseCacheException>(() => provider.Add("thekey", "thevalue", DateTime.MaxValue));
+                Assert.Throws<CouchbaseOutputCacheException>(() => provider.Add("thekey", "thevalue", DateTime.MaxValue));
             }
             else
             {
@@ -191,7 +191,7 @@ namespace Couchbase.AspNet.UnitTests
             bucket.Setup(x => x.Insert<dynamic>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TimeSpan>()))
                 .Returns(insert.Object).Verifiable();
 
-            var provider = new CouchbaseCacheProvider(bucket.Object) {ThrowOnError = throwOnError};
+            var provider = new CouchbaseOutputCacheProvider(bucket.Object) {ThrowOnError = throwOnError};
             var val = provider.Add("key", "value", DateTime.MaxValue);
             Assert.NotNull(val);
             bucket.Verify();
@@ -211,7 +211,7 @@ namespace Couchbase.AspNet.UnitTests
             var bucket = new Mock<IBucket>();
             bucket.Setup(x => x.Get<dynamic>(It.IsAny<string>())).Returns(get.Object).Verifiable();
 
-            var provider = new CouchbaseCacheProvider(bucket.Object) {ThrowOnError = throwOnError};
+            var provider = new CouchbaseOutputCacheProvider(bucket.Object) {ThrowOnError = throwOnError};
             var val = provider.Add("key", "value", DateTime.MaxValue);
             Assert.NotNull(val);
             bucket.Verify();
@@ -233,11 +233,11 @@ namespace Couchbase.AspNet.UnitTests
             var bucket = new Mock<IBucket>();
             bucket.Setup(x => x.Remove(It.IsAny<string>())).Returns(result.Object);
 
-            var provider = new CouchbaseCacheProvider(bucket.Object) {ThrowOnError = throwOnError};
+            var provider = new CouchbaseOutputCacheProvider(bucket.Object) {ThrowOnError = throwOnError};
 
             if (throwOnError)
             {
-                Assert.Throws<CouchbaseCacheException>(() => provider.Remove("thekey"));
+                Assert.Throws<CouchbaseOutputCacheException>(() => provider.Remove("thekey"));
             }
             else
             {

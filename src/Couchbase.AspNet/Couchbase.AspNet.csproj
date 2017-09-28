@@ -73,9 +73,9 @@
   <ItemGroup>
     <Compile Include="CacheBootStrapper.cs" />
     <Compile Include="Caching\BootstrapStrategy.cs" />
-    <Compile Include="Caching\CouchbaseCacheException.cs" />
-    <Compile Include="Caching\CouchbaseCacheProvider.cs" />
-    <Compile Include="Caching\CouchbaseCacheProviderAsync.cs" />
+    <Compile Include="Caching\CouchbaseOutputCacheException.cs" />
+    <Compile Include="Caching\CouchbaseOutputCacheProvider.cs" />
+    <Compile Include="Caching\CouchbaseOutputCacheProviderAsync.cs" />
     <Compile Include="Caching\ICouchbaseOutputCacheProvider.cs" />
     <Compile Include="MultiCluster.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
