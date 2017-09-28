@@ -94,38 +94,36 @@ namespace Couchbase.AspNet.Caching
         /// that value. The provider must not store the data passed by using the Add method parameters. The
         /// Add method stores the data if it is not already in the cache. If the data is in the cache, the
         /// Add method returns it.</remarks>
-        public override object Add(string key, object entry, DateTime utcExpiry)
-        {
-            _log.Debug("Cache.Add(" + key + ", " + entry + ", " + utcExpiry + ")");
-            CheckKey(key);
+         public override object Add(string key, object entry, DateTime utcExpiry)
+         {
+             _log.Debug("Cache.Add(" + key + ", " + entry + ", " + utcExpiry + ")");
+             CheckKey(key);
 
-            try
-            {
-                //return the value if the key exists
-                var exists = Bucket.Get<object>(key);
-                if (exists.Success)
-                {
-                    return exists.Value;
-                }
-                if (utcExpiry == DateTime.MaxValue) return null;
+             try
+             {
+                 //return the value if the key exists
+                 var exists = Bucket.Get<object>(key);
+                 if (exists.Success)
+                 {
+                     return exists.Value;
+                 }
 
-                var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
+                 var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
 
-                //no key so add the value and return it.
-                var result = Bucket.Insert(key, entry, expiration);
-                if (result.Success)
-                {
-                    return entry;
-                }
-                LogAndOrThrow(result, key);
-            }
-            catch (Exception e)
-            {
-                LogAndOrThrow(e, key);
-            }
-            return null;
-        }
-
+                 //no key so add the value and return it.
+                 var result = Bucket.Insert(key, entry, expiration);
+                 if (result.Success)
+                 {
+                     return entry;
+                 }
+                 LogAndOrThrow(result, key);
+             }
+             catch (Exception e)
+             {
+                 LogAndOrThrow(e, key);
+             }
+             return null;
+         }
 
         /// <summary>
         /// Inserts the specified entry into the output cache, overwriting the entry if it is already cached.
