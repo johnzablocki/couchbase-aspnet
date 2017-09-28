@@ -78,8 +78,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CouchbaseCacheProviderAsyncTests.cs" />
-    <Compile Include="CouchbaseCacheProviderTests.cs" />
+    <Compile Include="CouchbaseOutputCacheProviderAsyncTests.cs" />
+    <Compile Include="CouchbaseOutputCacheProviderTests.cs" />
     <Compile Include="MultiClusterTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ProviderHelperTests.cs" />
