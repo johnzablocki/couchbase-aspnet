@@ -45,6 +45,9 @@
     <Reference Include="log4net">
       <HintPath>..\..\packages\log4net.2.0.5\lib\net45-full\log4net.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.AspNet.SessionState.SessionStateModule, Version=1.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.AspNet.SessionState.SessionStateModule.1.1.0\lib\Net462\Microsoft.AspNet.SessionState.SessionStateModule.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -80,10 +83,12 @@
     <Compile Include="MultiCluster.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ProviderHelper.cs" />
+    <Compile Include="Session\CouchbaseSessionStateException.cs" />
+    <Compile Include="Session\CouchbaseSessionStateStoreProvider.cs" />
+    <Compile Include="Session\CouchbaseSessionStateStoreProviderAsync.cs" />
+    <Compile Include="Session\SessionStateItem.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Session\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <None Include="app.config">
       <SubType>Designer</SubType>
