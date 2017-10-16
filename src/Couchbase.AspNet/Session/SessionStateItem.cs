@@ -3,13 +3,13 @@ using System.Web.SessionState;
 
 namespace Couchbase.AspNet.Session
 {
+    [Serializable]
     public class SessionStateItem
     {
         public SessionStateItem()
         {
             //start with initialize items per msdn
             Flags = SessionStateActions.InitializeItem;
-            SessionItems = new SessionStateItemCollection();
             Created = DateTime.Now;
             LockDate = DateTime.Now;
             Locked = false;
@@ -31,7 +31,7 @@ namespace Couchbase.AspNet.Session
 
         public bool Locked { get; set; }
 
-        public ISessionStateItemCollection SessionItems { get; set; }
+        public byte[] SessionItems { get; set; }
 
         public SessionStateActions Flags { get; set; }
     }

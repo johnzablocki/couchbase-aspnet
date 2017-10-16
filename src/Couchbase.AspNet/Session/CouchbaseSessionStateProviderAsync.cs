@@ -10,7 +10,7 @@ using Microsoft.AspNet.SessionState;
 
 namespace Couchbase.AspNet.Session
 {
-    public class CouchbaseSessionStateStoreProviderAsync : SessionStateStoreProviderAsyncBase
+    public class CouchbaseSessionStateProviderAsync : SessionStateStoreProviderAsyncBase
     {
         public override SessionStateStoreData CreateNewStoreData(HttpContextBase context, int timeout)
         {

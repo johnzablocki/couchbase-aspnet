@@ -1,21 +1,41 @@
 ﻿using System;
+using System.Collections.Specialized;
+using System.IO;
 using System.Web;
 using System.Web.SessionState;
 using Common.Logging;
 using Couchbase.Core;
 using System.Web.Configuration;
+using Couchbase.AspNet.Caching;
 using Couchbase.IO;
 using Couchbase.Utils;
 
 namespace Couchbase.AspNet.Session
 {
-    public class CouchbaseSessionStateStoreProvider : SessionStateStoreProviderBase
+    public class CouchbaseSessionStateProvider : SessionStateStoreProviderBase, ICouchbaseWebProvider
     {
-        private readonly ILog _log = LogManager.GetLogger<CouchbaseSessionStateStoreProvider>();
+        private readonly object _syncObj = new object();
+        private readonly ILog _log = LogManager.GetLogger<CouchbaseSessionStateProvider>();
         public IBucket Bucket { get; set; }
         public string ApplicationName { get; set; }
         public bool ThrowOnError { get; set; }
+        public string Prefix { get; set; }
+        public string BucketName { get; set; }
         private SessionStateSection Config { get; set; }
+
+        public override void Initialize(string name, NameValueCollection config)
+        {
+            base.Initialize(name, config);
+            lock (_syncObj)
+            {
+                var appName = System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath;
+                var webConfig = WebConfigurationManager.OpenWebConfiguration(appName);
+                Config = (SessionStateSection)webConfig.GetSection("system.web/sessionState");
+
+                var bootStapper = new BootStrapper();
+                bootStapper.Bootstrap(name, config, this);
+            }
+        }
 
         public override void Dispose()
         {
@@ -79,6 +99,14 @@ namespace Couchbase.AspNet.Session
             out SessionStateActions actions)
         {
             _log.Trace("GetSessionStoreItem called.");
+            SessionStateStoreData sessionStateStoreData = null;
+            locked = false;
+            lockAge = TimeSpan.Zero;
+            lockId = 0;
+            actions = SessionStateActions.None;
+
+            if (id == null) return null;
+            
             /*
              * If no session item data is found at the data store, the GetItemExclusive method sets the locked output parameter to 
              * false and returns null. This causes SessionStateModule to call the CreateNewStoreData method to create a new 
@@ -87,7 +115,6 @@ namespace Couchbase.AspNet.Session
             var sessionData = Bucket.Get<SessionStateItem>(id);
             if (sessionData.Status == ResponseStatus.KeyNotFound)
             {
-                locked = false;
                 lockAge = TimeSpan.Zero;
                 actions = SessionStateActions.InitializeItem;
                 lockId = null;
@@ -105,7 +132,6 @@ namespace Couchbase.AspNet.Session
              */
 
             SessionStateStoreData item = null;
-            SessionStateItem sessionStateItem = null;
             if (sessionData.Status == ResponseStatus.Success)
             {
                 if (sessionData.Value.Locked)
@@ -113,33 +139,33 @@ namespace Couchbase.AspNet.Session
                     locked = true;
                     lockAge = DateTime.Now - sessionData.Value.LockDate;
                     lockId = sessionData.Value.LockId;
-                    actions = SessionStateActions.None;//should be InitializeItem?
+                    actions = sessionData.Value.Flags;
                 }
                 else
                 {
-                    locked = false;
                     lockAge = DateTime.Now - sessionData.Value.LockDate;
-                    lockId = (int)sessionData.Value.LockId + 1;
-                    actions = SessionStateActions.InitializeItem;
-                    sessionStateItem = sessionData.Value;
+                    lockId = sessionData.Value.LockId;
+                    var sessionStateItem = sessionData.Value;
 
                     if (sessionData.Value.Flags == SessionStateActions.InitializeItem)
                     {
                         //create a new item
-                        item = CreateNewStoreData(context, (int)Config.Timeout.TotalMinutes);
+                        item = CreateNewStoreData(context, (int) Config.Timeout.TotalMinutes);
                     }
                     else
                     {
-                        item = new SessionStateStoreData(sessionStateItem.SessionItems,
+                        item = new SessionStateStoreData(Deserialize(sessionStateItem.SessionItems),
                             SessionStateUtility.GetSessionStaticObjects(context),
-                            (int)sessionData.Value.Timeout.TotalMinutes);
+                            (int) sessionData.Value.Timeout.TotalMinutes);
                     }
                 }
             }
-            locked = false;
-            lockAge = TimeSpan.Zero;
-            actions = SessionStateActions.InitializeItem;
-            lockId = null;
+            else
+            {
+                lockAge = TimeSpan.Zero;
+                actions = SessionStateActions.InitializeItem;
+                lockId = null;
+            }
             return item;
         }
 
@@ -218,7 +244,7 @@ namespace Couchbase.AspNet.Session
                     ApplicationName = ApplicationName,
                     Expires = expires,
                     SessionId = id,
-                    SessionItems = item.Items,
+                    SessionItems = Serialize(item.Items),
                     Locked = false
                 }, expires.TimeOfDay);
 
@@ -231,24 +257,44 @@ namespace Couchbase.AspNet.Session
             {
                 var entry = original.Value;
                 entry.Expires  = DateTime.Now.AddMinutes(Config.Timeout.TotalMinutes);
-                entry.SessionItems = item.Items;
+                entry.SessionItems = Serialize(item.Items);
                 entry.Locked = false;
                 entry.SessionId = id;
                 entry.ApplicationName = ApplicationName;
                 entry.LockId = (uint)lockId;
+                entry.Flags = SessionStateActions.None;
 
                 var updated = Bucket.Upsert(new Document<SessionStateItem>
                 {
                     Content = entry,
                     Id = id,
-                    Cas = (uint) lockId,//this might not be correct
                     Expiry = entry.Expires.TimeOfDay.ToTtl()
                 });
+
                 if (!updated.Success)
                 {
                     LogAndOrThrow(updated, id);
                 }
             }
+        }
+
+        public byte[] Serialize(ISessionStateItemCollection items)
+        {
+            using (var ms = new MemoryStream())
+            {
+                var writer = new BinaryWriter(ms);
+                ((SessionStateItemCollection)items).Serialize(writer);
+                return ms.ToArray();
+            }
+        }
+
+        public ISessionStateItemCollection Deserialize(byte[] bytes)
+        {
+            using (var ms = new MemoryStream(bytes))
+            {
+                var reader = new BinaryReader(ms);
+                return SessionStateItemCollection.Deserialize(reader);
+            }  
         }
 
         public override void RemoveItem(HttpContext context, string id, object lockId, SessionStateStoreData item)
@@ -302,6 +348,29 @@ namespace Couchbase.AspNet.Session
                 timeout);   
         }
 
+        /*
+         * Takes as input the HttpContext instance for the current request, the SessionID value for the current request, 
+         * and the lock identifier for the current request, and adds an uninitialized item to the session data store with 
+         * an actionFlags value of InitializeItem.
+         * 
+         * The CreateUninitializedItem method is used with cookieless sessions when the regenerateExpiredSessionId attribute 
+         * is set to true, which causes SessionStateModule to generate a new SessionID value when an expired session ID is encountered.
+         * 
+         * The process of generating a new SessionID value requires the browser to be redirected to a URL that contains the newly 
+         * generated session ID. The CreateUninitializedItem method is called during an initial request that contains an expired
+         * session ID. After SessionStateModule acquires a new SessionID value to replace the expired session ID, it calls the 
+         * CreateUninitializedItem method to add an uninitialized entry to the session-state data store. The browser is then redirected 
+         * to the URL containing the newly generated SessionID value. The existence of the uninitialized entry in the session data 
+         * store ensures that the redirected request with the newly generated SessionID value is not mistaken for a request for an 
+         * expired session, and instead is treated as a new session.
+         * 
+         * The uninitialized entry in the session data store is associated with the newly generated SessionID value and contains only 
+         * default values, including an expiration date and time, and a value that corresponds to the actionFlags parameter of the GetItem 
+         * and GetItemExclusive methods. The uninitialized entry in the session state store should include an actionFlags value equal to 
+         * the InitializeItem enumeration value (1). This value is passed to SessionStateModule by the GetItem and GetItemExclusive 
+         * methods and specifies for SessionStateModule that the current session is a new session. SessionStateModule will then initialize 
+         * the new session and raise the Session_OnStart event.
+         */
         public override void CreateUninitializedItem(HttpContext context, string id, int timeout)
         {
             _log.Trace("CreateUninitializedItem called.");
@@ -313,6 +382,7 @@ namespace Couchbase.AspNet.Session
                     ApplicationName = ApplicationName,
                     Expires = expires,
                     SessionId = id,
+                    Flags = SessionStateActions.InitializeItem
                 }, expires.TimeOfDay);
 
                 if (result.Success) return;
