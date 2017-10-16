@@ -2,19 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using Common.Logging;
-using Common.Logging.Configuration;
 using Couchbase.AspNet.Caching;
 using Couchbase.Authentication;
 using Couchbase.Configuration.Client;
-using System.Collections.Specialized;
 
 namespace Couchbase.AspNet
 {
-    internal class CacheBootStrapper
+    internal class BootStrapper
     {
-        private readonly ILog _log = LogManager.GetLogger<CacheBootStrapper>();
+        private readonly ILog _log = LogManager.GetLogger<BootStrapper>();
 
-        public void Bootstrap(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseOutputCacheProvider provider)
+        public void Bootstrap(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseWebProvider provider)
         {
             if (Enum.TryParse(ProviderHelper.GetAndRemove(config, "bootstrapStrategy", true),
                 true, out BootstrapStrategy configStrategy))
@@ -41,7 +39,7 @@ namespace Couchbase.AspNet
             }
         }
 
-        private void ConfigureManually(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseOutputCacheProvider provider)
+        private void ConfigureManually(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseWebProvider provider)
         {
             var prefix = ProviderHelper.GetAndRemove(config, "prefix", false);
             var bucket = ProviderHelper.GetAndRemove(config, "bucket", true);
@@ -55,7 +53,7 @@ namespace Couchbase.AspNet
             provider.Bucket = MultiCluster.GetBucket(name, provider.BucketName);
         }
 
-        private void ConfigureInline(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseOutputCacheProvider provider)
+        private void ConfigureInline(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseWebProvider provider)
         {
             var prefix = ProviderHelper.GetAndRemove(config, "prefix", false);
             var servers = ProviderHelper.GetAndRemoveAsArray(config, "servers", ';', false).Select(x => new Uri(x)).ToList();
@@ -110,7 +108,7 @@ namespace Couchbase.AspNet
             {
                 if (!string.IsNullOrWhiteSpace(password))
                 {
-                    authenticator = new PasswordAuthenticator(bucket, password);
+                    authenticator = new PasswordAuthenticator(username, password);
                 }
             }
 
@@ -120,7 +118,7 @@ namespace Couchbase.AspNet
             provider.Bucket = MultiCluster.GetBucket(name, provider.BucketName);
         }
 
-        private void ConfigureFromSection(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseOutputCacheProvider provider)
+        private void ConfigureFromSection(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseWebProvider provider)
         {
             //configure from the CouchbaseClientSection in Web.Config
             MultiCluster.Configure(name, config);

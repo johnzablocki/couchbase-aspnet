@@ -12,7 +12,7 @@ namespace Couchbase.AspNet.Caching
     /// <summary>
     /// A custom asynchronous output-cache provider that uses Couchbase Server as the backing store.
     /// </summary>
-    public class CouchbaseOutputCacheProviderAsync : OutputCacheProviderAsync, ICouchbaseOutputCacheProvider
+    public class CouchbaseOutputCacheProviderAsync : OutputCacheProviderAsync, ICouchbaseWebProvider
     {
         private readonly object _syncObj = new object();
         private ILog _log = LogManager.GetLogger<CouchbaseOutputCacheProvider>();
@@ -34,7 +34,7 @@ namespace Couchbase.AspNet.Caching
             base.Initialize(name, config);
             lock (_syncObj)
             {
-                var bootStapper = new CacheBootStrapper();
+                var bootStapper = new BootStrapper();
                 bootStapper.Bootstrap(name, config, this);
             }
         }

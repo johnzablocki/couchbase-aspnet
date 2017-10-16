@@ -1,10 +1,8 @@
-﻿
-using Common.Logging;
-using Couchbase.Core;
+﻿using Couchbase.Core;
 
 namespace Couchbase.AspNet.Caching
 {
-    internal interface ICouchbaseOutputCacheProvider
+    internal interface ICouchbaseWebProvider
     {
         IBucket Bucket { get; set; }
         bool ThrowOnError { get; set; }

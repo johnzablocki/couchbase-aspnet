@@ -16,7 +16,7 @@ namespace Couchbase.AspNet.Caching
     /// </summary>
     /// <seealso cref="System.Web.Caching.OutputCacheProvider" />
     // ReSharper disable once InheritdocConsiderUsage
-    public class CouchbaseOutputCacheProvider : OutputCacheProvider, ICouchbaseOutputCacheProvider
+    public class CouchbaseOutputCacheProvider : OutputCacheProvider, ICouchbaseWebProvider
     {
         private readonly object _syncObj = new object();
         private readonly ILog _log = LogManager.GetLogger<CouchbaseOutputCacheProvider>();
@@ -38,7 +38,7 @@ namespace Couchbase.AspNet.Caching
             base.Initialize(name, config);
             lock(_syncObj)
             {
-                var bootStapper = new CacheBootStrapper();
+                var bootStapper = new BootStrapper();
                 bootStapper.Bootstrap(name, config, this);
             }
         }
