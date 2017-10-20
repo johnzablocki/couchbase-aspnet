@@ -9,7 +9,7 @@ namespace Couchbase.AspNet.Session
         public SessionStateItem()
         {
             //start with initialize items per msdn
-            Flags = SessionStateActions.InitializeItem;
+            Actions = SessionStateActions.InitializeItem;
             Created = DateTime.Now;
             LockDate = DateTime.Now;
             Locked = false;
@@ -33,7 +33,7 @@ namespace Couchbase.AspNet.Session
 
         public byte[] SessionItems { get; set; }
 
-        public SessionStateActions Flags { get; set; }
+        public SessionStateActions Actions { get; set; }
     }
 }
 
