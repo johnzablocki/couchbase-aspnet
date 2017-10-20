@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26430.16
+VisualStudioVersion = 15.0.26730.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CC6DB7EC-7DAD-4B28-82DC-560C304AA915}"
 	ProjectSection(SolutionItems) = preProject
@@ -17,6 +17,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Couchbase.Asp.Net.IntegrationTests", "test\Couchbase.Asp.Net.IntegrationTests\Couchbase.Asp.Net.IntegrationTests.csproj", "{472626CD-F95A-4ADB-9497-2A2783DF2BBF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Couchbase.AspNet", "src\Couchbase.AspNet\Couchbase.AspNet.csproj", "{3EA61628-625D-4C89-AFC6-5F60D51C1DA8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Couchbase.AspNet.CouchbaseCacheProvider.Example", "test\Couchbase.AspNet.CouchbaseCacheProvider.Example\Couchbase.AspNet.CouchbaseCacheProvider.Example.csproj", "{E0E873B1-DC2C-49A3-84C8-17FEE6798BC4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,6 +38,10 @@ Global
 		{3EA61628-625D-4C89-AFC6-5F60D51C1DA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3EA61628-625D-4C89-AFC6-5F60D51C1DA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3EA61628-625D-4C89-AFC6-5F60D51C1DA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E0E873B1-DC2C-49A3-84C8-17FEE6798BC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E0E873B1-DC2C-49A3-84C8-17FEE6798BC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E0E873B1-DC2C-49A3-84C8-17FEE6798BC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E0E873B1-DC2C-49A3-84C8-17FEE6798BC4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -44,5 +50,8 @@ Global
 		{6F71D684-7652-4F5C-AF68-6B593C22C4AD} = {7422508F-CD37-4D70-8725-61249357B291}
 		{472626CD-F95A-4ADB-9497-2A2783DF2BBF} = {7422508F-CD37-4D70-8725-61249357B291}
 		{3EA61628-625D-4C89-AFC6-5F60D51C1DA8} = {799871FB-C9BC-474A-9F31-63DC3A95726D}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FA51B26D-3E0D-415B-82FC-EB4E50A5B550}
 	EndGlobalSection
 EndGlobal

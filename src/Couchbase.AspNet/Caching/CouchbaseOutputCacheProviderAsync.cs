@@ -9,23 +9,34 @@ using Couchbase.Utils;
 
 namespace Couchbase.AspNet.Caching
 {
-    public class CouchbaseCacheProviderAsync : OutputCacheProviderAsync
+    /// <summary>
+    /// A custom asynchronous output-cache provider that uses Couchbase Server as the backing store.
+    /// </summary>
+    public class CouchbaseOutputCacheProviderAsync : OutputCacheProviderAsync, ICouchbaseWebProvider
     {
-        private IBucket _bucket;
-        private ILog _log = LogManager.GetLogger<CouchbaseCacheProvider>();
+        private readonly object _syncObj = new object();
+        private ILog _log = LogManager.GetLogger<CouchbaseOutputCacheProvider>();
         private const string EmptyKeyMessage = "'key' must be non-null, not empty or whitespace.";
+        public IBucket Bucket { get; set; }
         public bool ThrowOnError { get; set; }
+        public string Prefix { get; set; }
+        public string BucketName { get; set; }
 
-        public CouchbaseCacheProviderAsync() { }
+        public CouchbaseOutputCacheProviderAsync() { }
 
-        public CouchbaseCacheProviderAsync(IBucket bucket)
+        public CouchbaseOutputCacheProviderAsync(IBucket bucket)
         {
-            _bucket = bucket;
+            Bucket = bucket;
         }
 
         public override void Initialize(string name, NameValueCollection config)
         {
             base.Initialize(name, config);
+            lock (_syncObj)
+            {
+                var bootStapper = new BootStrapper();
+                bootStapper.Bootstrap(name, config, this);
+            }
         }
 
         /// <summary>
@@ -39,6 +50,7 @@ namespace Couchbase.AspNet.Caching
         /// <exception cref="InvalidOperationException"></exception>
         public override object Get(string key)
         {
+            _log.Debug("Cache.Get(" + key + ")");
             return GetAsync(key).GetAwaiter().GetResult();
         }
 
@@ -60,6 +72,7 @@ namespace Couchbase.AspNet.Caching
         /// Add method returns it.</remarks>
         public override object Add(string key, object entry, DateTime utcExpiry)
         {
+            _log.Debug("Cache.Add(" + key + ", " + entry + ", " + utcExpiry + ")");
             return AddAsync(key, entry, utcExpiry).GetAwaiter().GetResult();
         }
 
@@ -73,6 +86,7 @@ namespace Couchbase.AspNet.Caching
         /// <exception cref="InvalidOperationException"></exception>
         public override void Set(string key, object entry, DateTime utcExpiry)
         {
+            _log.Debug("Cache.Set(" + key + ", " + entry + ", " + utcExpiry + ")");
             SetAsync(key, entry, utcExpiry).GetAwaiter().GetResult();
         }
 
@@ -96,12 +110,13 @@ namespace Couchbase.AspNet.Caching
         /// <exception cref="InvalidOperationException"></exception>
         public override async Task<object> GetAsync(string key)
         {
+            _log.Debug("Cache.GetAsync(" + key + ")");
             CheckKey(key);
 
             try
             {
                 // get the item
-                var result = await _bucket.GetAsync<dynamic>(key).ContinueOnAnyContext();
+                var result = await Bucket.GetAsync<dynamic>(key).ContinueOnAnyContext();
                 if (result.Success)
                 {
                     return result.Value;
@@ -137,21 +152,22 @@ namespace Couchbase.AspNet.Caching
         /// Add method returns it.</remarks>
         public override async Task<object> AddAsync(string key, object entry, DateTime utcExpiry)
         {
+            _log.Debug("Cache.AddAsync(" + key + ", " + entry + ", " + utcExpiry + ")");
             CheckKey(key);
 
             try
             {
                 //return the value if the key exists
-                var exists = await _bucket.GetAsync<object>(key).ContinueOnAnyContext();
+                var exists = await Bucket.GetAsync<object>(key).ContinueOnAnyContext();
                 if (exists.Success)
                 {
                     return exists.Value;
                 }
 
-                var expiration = DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay;
+                var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
 
                 //no key so add the value and return it.
-                var result = await _bucket.InsertAsync(key, entry, expiration).ContinueOnAnyContext();
+                var result = await Bucket.InsertAsync(key, entry, expiration).ContinueOnAnyContext();
                 if (result.Success)
                 {
                     return entry;
@@ -175,13 +191,14 @@ namespace Couchbase.AspNet.Caching
         /// <exception cref="InvalidOperationException"></exception>
         public override async Task SetAsync(string key, object entry, DateTime utcExpiry)
         {
+            _log.Debug("Cache.SetAsync(" + key + ", " + entry + ", " + utcExpiry + ")");
             CheckKey(key);
 
             try
             {
-                var expiration = DateTime.SpecifyKind(utcExpiry, DateTimeKind.Utc).TimeOfDay;
+                var expiration = utcExpiry - DateTime.Now.ToUniversalTime();
 
-                var result = await _bucket.UpsertAsync(key, entry, expiration).ContinueOnAnyContext();
+                var result = await Bucket.UpsertAsync(key, entry, expiration).ContinueOnAnyContext();
                 if (result.Success) return;
                 LogAndOrThrow(result, key);
             }
@@ -201,7 +218,7 @@ namespace Couchbase.AspNet.Caching
 
             try
             {
-                var result = await _bucket.RemoveAsync(key).ContinueOnAnyContext();
+                var result = await Bucket.RemoveAsync(key).ContinueOnAnyContext();
                 if (result.Success) return;
                 LogAndOrThrow(result, key);
             }
@@ -217,13 +234,13 @@ namespace Couchbase.AspNet.Caching
         /// </summary>
         /// <param name="e">The e.</param>
         /// <param name="key">The key.</param>
-        /// <exception cref="Couchbase.AspNet.Caching.CouchbaseCacheException"></exception>
+        /// <exception cref="Couchbase.AspNet.Caching.CouchbaseOutputCacheException"></exception>
         private void LogAndOrThrow(Exception e, string key)
         {
             _log.Error($"Could not retrieve, remove or write key '{key}' - reason: {e}");
             if (ThrowOnError)
             {
-                throw new CouchbaseCacheException($"Could not retrieve, remove or write key '{key}'", e);
+                throw new CouchbaseOutputCacheException($"Could not retrieve, remove or write key '{key}'", e);
             }
         }
 
@@ -264,3 +281,24 @@ namespace Couchbase.AspNet.Caching
         }
     }
 }
+
+#region [ License information ]
+/* ************************************************************
+ *
+ *    @author Couchbase <info@couchbase.com>
+ *    @copyright 2017 Couchbase, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ *
+ * ************************************************************/
+#endregion
