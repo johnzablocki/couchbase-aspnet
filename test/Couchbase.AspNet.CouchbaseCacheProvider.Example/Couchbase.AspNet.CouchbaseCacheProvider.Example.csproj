@@ -56,8 +56,8 @@
     <Reference Include="Common.Logging.Log4Net1215, Version=3.4.1.0, Culture=neutral, PublicKeyToken=af08829b84f0328e, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Common.Logging.Log4Net1215.3.4.1\lib\net40\Common.Logging.Log4Net1215.dll</HintPath>
     </Reference>
-    <Reference Include="Couchbase.NetClient, Version=2.5.0.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\CouchbaseNetClient.2.5.0\lib\net45\Couchbase.NetClient.dll</HintPath>
+    <Reference Include="Couchbase.NetClient, Version=2.5.4.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\CouchbaseNetClient.2.5.4\lib\net45\Couchbase.NetClient.dll</HintPath>
     </Reference>
     <Reference Include="log4net, Version=1.2.15.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\log4net.2.0.5\lib\net45-full\log4net.dll</HintPath>
