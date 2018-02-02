@@ -161,7 +161,7 @@ namespace Couchbase.AspNet.Session
                 }
 
                 if (!lockRecord) return item;
-                var upsert = Bucket.Upsert(id, sessionData);
+                var upsert = Bucket.Upsert(id, sessionData.Value);
                 if (!upsert.Success)
                 {
                     LogAndOrThrow(upsert, id);
