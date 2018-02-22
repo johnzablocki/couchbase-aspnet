@@ -52,6 +52,7 @@ namespace Couchbase.AspNet.Session
             Log.TraceFormat("CreateUninitializedItem called for item {0}.", id);
             try
             {
+                //TODO is timeout the expiration!!!!
                 var expires = DateTime.UtcNow.AddMinutes(timeout);
                 var result = await Bucket.InsertAsync(id, new SessionStateItem
                 {
@@ -59,7 +60,7 @@ namespace Couchbase.AspNet.Session
                     Expires = expires,
                     SessionId = id,
                     Actions = SessionStateActions.InitializeItem
-                }, expires.TimeOfDay);
+                }, expires.TimeOfDay).ConfigureAwait(false);
 
                 if (result.Success) return;
                 LogAndOrThrow(result, id);
@@ -93,7 +94,7 @@ namespace Couchbase.AspNet.Session
         public async Task<GetItemResult> GetItemFromStoreAsync(HttpContextBase context, string id, CancellationToken cancellationToken, bool exclusive)
         {
             if (id == null) return null;
-            var get = await Bucket.GetAsync<SessionStateItem>(id);
+            var get = await Bucket.GetAsync<SessionStateItem>(id).ConfigureAwait(false);
             if (get.Status == ResponseStatus.KeyNotFound)
             {
                 return null;
@@ -123,7 +124,7 @@ namespace Couchbase.AspNet.Session
                 if (exclusive)
                 {
                     item.Locked = true;
-                    var upsert = await Bucket.UpsertAsync(id, item);
+                    var upsert = await Bucket.UpsertAsync(id, item).ConfigureAwait(false);
                     if (!upsert.Success)
                     {
                         LogAndOrThrow(upsert, id);
@@ -145,7 +146,7 @@ namespace Couchbase.AspNet.Session
                 throw new ArgumentNullException(nameof(id));
             }
 
-            var get = await Bucket.GetAsync<SessionStateItem>(id);
+            var get = await Bucket.GetAsync<SessionStateItem>(id).ConfigureAwait(false);
             var item = get.Value;
 
             if (get.Success && item != null && (uint) lockId == item.LockId)
@@ -153,7 +154,7 @@ namespace Couchbase.AspNet.Session
                 item.Locked = false;
                 item.LockId = 0;
 
-                var upsert = await Bucket.UpsertAsync(id, item);
+                var upsert = await Bucket.UpsertAsync(id, item).ConfigureAwait(false);
                 if (!upsert.Success)
                 {
                     LogAndOrThrow(upsert, id);
@@ -168,7 +169,7 @@ namespace Couchbase.AspNet.Session
         public override async Task RemoveItemAsync(HttpContextBase context, string id, object lockId, SessionStateStoreData item,
             CancellationToken cancellationToken)
         {
-            var removed = await Bucket.RemoveAsync(id);
+            var removed = await Bucket.RemoveAsync(id).ConfigureAwait(false);
             if (!removed.Success)
             {
                 LogAndOrThrow(removed, id);
@@ -177,7 +178,7 @@ namespace Couchbase.AspNet.Session
 
         public override async Task ResetItemTimeoutAsync(HttpContextBase context, string id, CancellationToken cancellationToken)
         {
-            var touched = await Bucket.TouchAsync(id, Config.Timeout);
+            var touched = await Bucket.TouchAsync(id, Config.Timeout).ConfigureAwait(false);
             if (!touched.Success)
             {
                 LogAndOrThrow(touched, id);
@@ -194,7 +195,7 @@ namespace Couchbase.AspNet.Session
                     Actions = SessionStateActions.None,
                     LockId = (uint?) lockId ?? 0,
                     SessionItems = Serialize(item.Items)
-                }, Config.Timeout);
+                }, Config.Timeout).ConfigureAwait(false);
 
                 if (!insert.Success)
                 {
@@ -208,14 +209,14 @@ namespace Couchbase.AspNet.Session
                     LockId = (uint?)lockId ?? 0,
                     Actions = SessionStateActions.None,
                     SessionItems = Serialize(item.Items)
-                });
+                }).ConfigureAwait(false);
                 if (!upsert.Success)
                 {
                     LogAndOrThrow(upsert, id);
                 }
             }
 
-            await ReleaseItemExclusiveAsync(context, id, lockId, cancellationToken);
+            await ReleaseItemExclusiveAsync(context, id, lockId, cancellationToken).ConfigureAwait(false);
         }
 
         public override bool SetItemExpireCallback(SessionStateItemExpireCallback expireCallback)
@@ -315,21 +316,21 @@ namespace Couchbase.AspNet.Session
 
 #region [ License information          ]
 /* ************************************************************
- * 
+ *
  *    @author Couchbase <info@couchbase.com>
  *    @copyright 2017 Couchbase, Inc.
- *    
+ *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
  *    You may obtain a copy of the License at
- *    
+ *
  *        http://www.apache.org/licenses/LICENSE-2.0
- *    
+ *
  *    Unless required by applicable law or agreed to in writing, software
  *    distributed under the License is distributed on an "AS IS" BASIS,
  *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
- *    
+ *
  * ************************************************************/
 #endregion
