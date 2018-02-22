@@ -161,7 +161,7 @@ namespace Couchbase.AspNet.Session
                 }
 
                 if (!lockRecord) return item;
-                var upsert = Bucket.Upsert(id, sessionData.Value);
+                var upsert = Bucket.Upsert(id, sessionData.Value, Config.Timeout);
                 if (!upsert.Success)
                 {
                     LogAndOrThrow(upsert, id);
@@ -213,7 +213,7 @@ namespace Couchbase.AspNet.Session
             item.ApplicationName = ApplicationName;
             item.LockId = (uint)lockId;
 
-            var upsert = Bucket.Upsert(id, item);
+            var upsert = Bucket.Upsert(id, item, Config.Timeout);
             if (!upsert.Success)
             {
                 LogAndOrThrow(upsert, id);
@@ -252,7 +252,7 @@ namespace Couchbase.AspNet.Session
                     SessionId = id,
                     SessionItems = Serialize(item.Items),
                     Locked = false
-                }, expires.TimeOfDay);
+                }, TimeSpan.FromMinutes(item.Timeout));
 
                 if (!result.Success)
                 {
@@ -274,8 +274,8 @@ namespace Couchbase.AspNet.Session
                 {
                     Content = entry,
                     Id = id,
-                    Expiry = entry.Expires.TimeOfDay.ToTtl()
-                });
+                    Expiry = (uint)Config.Timeout.TotalSeconds
+                }, TimeSpan.FromMinutes(item.Timeout));
 
                 if (!updated.Success)
                 {
@@ -329,14 +329,12 @@ namespace Couchbase.AspNet.Session
             var result = Bucket.Get<SessionStateItem>(id);
             if (result.Success)
             {
-                var expires = DateTime.UtcNow.AddMinutes(Config.Timeout.TotalMinutes).TimeOfDay;
-
                 var item = result.Value;
-                item.Timeout = expires;
+                item.Timeout = Config.Timeout;
                 item.SessionId = id;
                 item.ApplicationName = ApplicationName;
 
-                var updated = Bucket.Upsert(id, item, expires);
+                var updated = Bucket.Upsert(id, item, Config.Timeout);
                 if (updated.Success) return;
                 LogAndOrThrow(updated, id);
             }
@@ -389,7 +387,7 @@ namespace Couchbase.AspNet.Session
                     Expires = expires,
                     SessionId = id,
                     Actions = SessionStateActions.InitializeItem
-                }, expires.TimeOfDay);
+                }, TimeSpan.FromMinutes(timeout));
 
                 if (result.Success) return;
                 LogAndOrThrow(result, id);
