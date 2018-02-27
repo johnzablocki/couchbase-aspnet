@@ -83,8 +83,8 @@ A new feature for 3.0, is bootstrapping by adding your configuration "inline" wi
 	        <providers>
 	          <add name="couchbase-cache" 
 	               type="Couchbase.AspNet.Caching.CouchbaseCacheProvider, Couchbase.AspNet, Version=1.0.0.0, Culture=neutral"
-	               bootstrapStrategy="inline",
-		       bucket="default",
+	               bootstrapStrategy="inline"
+		       bucket="default"
 	               servers="http://node1:8091; http://node2:8091"></add>
 	        </providers>
 	      </outputCache>
