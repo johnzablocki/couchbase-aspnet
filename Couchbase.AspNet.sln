@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SessionStateExample", "exam
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SessionStateAsyncExample", "SessionStateAsyncExample\SessionStateAsyncExample.csproj", "{1504ECE1-37D8-493B-8CE8-3E12D3CD93DE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebFormSessionStateExample", "examples\WebFormSessionStateExample\WebFormSessionStateExample.csproj", "{823108E9-98D4-4EC1-9741-D6C67004BD1D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,6 +58,10 @@ Global
 		{1504ECE1-37D8-493B-8CE8-3E12D3CD93DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1504ECE1-37D8-493B-8CE8-3E12D3CD93DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1504ECE1-37D8-493B-8CE8-3E12D3CD93DE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{823108E9-98D4-4EC1-9741-D6C67004BD1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{823108E9-98D4-4EC1-9741-D6C67004BD1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{823108E9-98D4-4EC1-9741-D6C67004BD1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{823108E9-98D4-4EC1-9741-D6C67004BD1D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -67,6 +73,7 @@ Global
 		{E0E873B1-DC2C-49A3-84C8-17FEE6798BC4} = {EA51BF50-3B1F-431D-87E3-21CAAE542F73}
 		{94040E74-F37F-4E0B-B883-FACCC726F384} = {EA51BF50-3B1F-431D-87E3-21CAAE542F73}
 		{1504ECE1-37D8-493B-8CE8-3E12D3CD93DE} = {EA51BF50-3B1F-431D-87E3-21CAAE542F73}
+		{823108E9-98D4-4EC1-9741-D6C67004BD1D} = {EA51BF50-3B1F-431D-87E3-21CAAE542F73}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FA51B26D-3E0D-415B-82FC-EB4E50A5B550}
