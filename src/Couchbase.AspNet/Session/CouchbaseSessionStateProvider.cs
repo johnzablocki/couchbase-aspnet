@@ -39,7 +39,7 @@ namespace Couchbase.AspNet.Session
 
         public override void Dispose()
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         #region Not Supported
@@ -274,7 +274,7 @@ namespace Couchbase.AspNet.Session
                 {
                     Content = entry,
                     Id = id,
-                    Expiry = (uint)Config.Timeout.TotalSeconds
+                    Expiry = (uint)Config.Timeout.TotalMilliseconds
                 }, TimeSpan.FromMinutes(item.Timeout));
 
                 if (!updated.Success)
