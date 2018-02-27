@@ -20,7 +20,7 @@ This library provides infrastructure support for using [Couchbase Server](http:/
 - Provider level logging
 - Role Based Access Control (RBAC) for Couchbase Server 5.0
 
-**Note: this branch is new development for v3.0 and unstable atm - 2.0 branch is stable.**
+**Note: this branch is new development for v3.0 ~~and unstable~~ is getting more stable atm - 2.0 branch is stable.**
 
 ## Caching and Session Providers for .NET Full Framework 4.5 and 4.6.2 ##
 
