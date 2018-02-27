@@ -83,21 +83,22 @@ A new feature for 3.0, is bootstrapping by adding your configuration "inline" wi
 	        <providers>
 	          <add name="couchbase-cache" 
 	               type="Couchbase.AspNet.Caching.CouchbaseCacheProvider, Couchbase.AspNet, Version=1.0.0.0, Culture=neutral"
-	               configStrategy="inline"
+	               bootstrapStrategy="inline",
+		       bucket="default",
 	               servers="http://node1:8091; http://node2:8091"></add>
 	        </providers>
 	      </outputCache>
 	    </caching>
 	  </system.web>
 
-When the provider initializes, it will create an internal `ClientConfiguration` for the Couchbase SDK and use the servers `"http://node1:8091"` and `"http://node2:8091"` as the bootstrapping servers. Note the `configStrategy` has the value `inline`, this will let the provider know how to handle the SDK bootstrapping.
+When the provider initializes, it will create an internal `ClientConfiguration` for the Couchbase SDK and use the servers `"http://node1:8091"` and `"http://node2:8091"` as the bootstrapping servers. Note the `bootstrapStrategy` has the value `inline`, this will let the provider know how to handle the SDK bootstrapping.
 
 All other configuration values will be defaulted to the `ClientConfiguration` settings, but there are several that can be overridden:
 
 - `username`: Used for Couchbase Server 5.0 or greater RBAC authentication.
 - `password`: The password for the password for the username or the bucket.
 - `bucket`: The bucket where the data is stored. For pre-5.0 Couchbase servers this will be used to authenticate along with the password.
-- `configStrategy`: The configuration strategy to use for SDK bootstrapping.
+- `bootstrapStrategy`: The configuration strategy to use for SDK bootstrapping.
 - `servers`: A semi-colon delimited list of bootstrapping server (A Couchbase Cluster node).
 - `useSsl`: If true and certs are setup, TLS/SSL will be used for secure communication between the app server and the Couchbase cluster.
 - `prefix`: An optional key-prefix for each item stored.
@@ -119,7 +120,7 @@ Here is an example with every configuration value set:
 	               username="Administrator"
 	               password="password"
 	               bucket="default"
-	               configStrategy="inline"
+	               bootstrapStrategy="inline"
 	               servers="http://node1:8091; http://node2:8091"
 	               useSsl="true"
 	               prefix="app1"
@@ -150,7 +151,7 @@ Here is an example, starting with the Web.Config:
 	        <providers>
 	          <add name="couchbase-cache" 
 	               type="Couchbase.AspNet.Caching.CouchbaseOutputCacheProvider, Couchbase.AspNet, Version=1.0.0.0, Culture=neutral"
-	               configStrategy="inline"
+	               bootstrapStrategy="inline"
 				   bucket="default"
 				   prefix="pfx"
 				   throwOnError="true"
