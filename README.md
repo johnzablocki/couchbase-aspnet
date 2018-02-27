@@ -13,7 +13,8 @@ This library provides infrastructure support for using [Couchbase Server](http:/
 
 ## New Features for 3.0 ##
 
-- New provider for asynchronous output caching: CouchbaseOutputCacheProviderAsync
+- Supports .NET 4.6.0 and 4.6.2 frameworks
+- New provider for asynchronous output caching/session state: CouchbaseOutputCacheProviderAsync and CouchbaseSessionStateProviderAsync
 - Bootstrapping strategies - inline, manual and section
 - Suppress and log errors or throw them - your choice
 - Provider level logging
