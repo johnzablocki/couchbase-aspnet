@@ -1,4 +1,6 @@
-﻿using System;
+﻿#if NET462
+
+using System;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
 using System.Web.Caching;
@@ -302,3 +304,4 @@ namespace Couchbase.AspNet.Caching
  *
  * ************************************************************/
 #endregion
+#endif

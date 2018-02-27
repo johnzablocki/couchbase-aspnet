@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if NET462
+using System;
 using System.Collections.Specialized;
 using System.IO;
 using System.Threading;
@@ -334,3 +335,4 @@ namespace Couchbase.AspNet.Session
  *
  * ************************************************************/
 #endregion
+#endif
