@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if NET462
+using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Couchbase.AspNet.Caching;
@@ -12,7 +13,7 @@ namespace Couchbase.AspNet.UnitTests
 {
     public class CouchbaseOutputCacheProviderAsyncTests
     {
-        #region Get tests
+#region Get tests
 
         [Theory]
         [InlineData(null, true)]
@@ -160,9 +161,9 @@ namespace Couchbase.AspNet.UnitTests
             await Assert.ThrowsAsync<CouchbaseOutputCacheException>(() => provider.GetAsync("thekey"));
         }
 
-        #endregion
+#endregion
 
-        #region Set tests
+#region Set tests
 
         [Theory]
         [InlineData(null, true)]
@@ -259,9 +260,9 @@ namespace Couchbase.AspNet.UnitTests
         }
 
 
-        #endregion
+#endregion
 
-        #region Add tests
+#region Add tests
 
         [Theory]
         [InlineData(true)]
@@ -417,9 +418,9 @@ namespace Couchbase.AspNet.UnitTests
             bucket.Verify();
         }
 
-        #endregion
+#endregion
 
-        #region Remove tests
+#region Remove tests
 
         [Theory]
         [InlineData(true)]
@@ -470,6 +471,7 @@ namespace Couchbase.AspNet.UnitTests
         }
 
 
-        #endregion
+#endregion
     }
 }
+#endif
