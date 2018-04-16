@@ -10,12 +10,13 @@ namespace SessionStateAsyncExample.Controllers
     {
         public ActionResult Index()
         {
+            Session["test"] = "foo";
             return View();
         }
 
         public ActionResult About()
         {
-            ViewBag.Message = "Your application description page.";
+            ViewBag.Message = "Your application description page. " + Session["test"];
 
             return View();
         }

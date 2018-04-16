@@ -150,7 +150,7 @@ namespace Couchbase.AspNet.Session
             var get = await Bucket.GetAsync<SessionStateItem>(id).ConfigureAwait(false);
             var item = get.Value;
 
-            if (get.Success && item != null && (uint) lockId == item.LockId)
+            if (get.Success && item != null && lockId != null && (uint) lockId == item.LockId)
             {
                 item.Locked = false;
                 item.LockId = 0;
@@ -246,6 +246,7 @@ namespace Couchbase.AspNet.Session
 
         public ISessionStateItemCollection Deserialize(byte[] bytes)
         {
+            if (bytes == null) return new SessionStateItemCollection();
             using (var ms = new MemoryStream(bytes))
             {
                 var reader = new BinaryReader(ms);
