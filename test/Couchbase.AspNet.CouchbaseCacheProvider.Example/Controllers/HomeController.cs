@@ -10,7 +10,6 @@ namespace Couchbase.AspNet.CouchbaseCacheProvider.Example.Controllers
     {
         public ActionResult Index()
         {
-
             return View();
         }
 
