@@ -18,15 +18,6 @@ namespace Couchbase.AspNet.CouchbaseCacheProvider.Example
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
-
-            //configure the couchbase cluster
-            MultiCluster.Configure(new ClientConfiguration
-            {
-                Servers = new List<Uri>
-                {
-                    new Uri("http://localhost:8091")
-                }
-            }, "couchbase-cache");
         }
     }
 }
