@@ -21,6 +21,20 @@ namespace SessionStateAsyncExample.Controllers
             return View();
         }
 
+        public ActionResult StartSession()
+        {
+            Session["User"] = "Session started for John Doe!";
+
+            return View("Index");
+        }
+
+        public ActionResult ClearSession()
+        {
+            Session.Clear();
+
+            return View("Index");
+        }
+
         public ActionResult Contact()
         {
             ViewBag.Message = "Your contact page for " + Session["User"];
