@@ -74,7 +74,7 @@ namespace Couchbase.AspNet.Session
 
         public override void Dispose()
         {
-            throw new NotImplementedException();
+            //not required
         }
 
         public override Task EndRequestAsync(HttpContextBase context)
