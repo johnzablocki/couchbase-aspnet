@@ -25,6 +25,8 @@ namespace Couchbase.AspNet.Session
         public string BucketName { get; set; }
         internal ILog Log => LogManager.GetLogger<CouchbaseSessionStateProvider>();
         private SessionStateSection Config { get; set; }
+        public int? TimeOut { get; set; }
+
 
         public override void Initialize(string name, NameValueCollection config)
         {
@@ -37,6 +39,7 @@ namespace Couchbase.AspNet.Session
 
                 var bootStapper = new BootStrapper();
                 bootStapper.Bootstrap(name, config, this);
+                TimeOut =  ProviderHelper.GetAndRemoveAsInt(config, "timeout", false);
             }
         }
 
@@ -53,15 +56,16 @@ namespace Couchbase.AspNet.Session
             Log.TraceFormat("CreateUninitializedItem called for item {0}.", id);
             try
             {
-                //TODO is timeout the expiration!!!!
+                var sessionTimeout = new TimeSpan(0, timeout, 0);
                 var expires = DateTime.UtcNow.AddMinutes(timeout);
                 var result = await Bucket.InsertAsync(id, new SessionStateItem
                 {
                     ApplicationName = ApplicationName,
                     Expires = expires,
                     SessionId = id,
-                    Actions = SessionStateActions.InitializeItem
-                }, expires.TimeOfDay).ConfigureAwait(false);
+                    Actions = SessionStateActions.InitializeItem,
+                    Timeout = sessionTimeout
+                }, sessionTimeout).ConfigureAwait(false);
 
                 if (result.Success) return;
                 LogAndOrThrow(result, id);
@@ -125,7 +129,7 @@ namespace Couchbase.AspNet.Session
                 if (exclusive)
                 {
                     item.Locked = true;
-                    var upsert = await Bucket.UpsertAsync(id, item).ConfigureAwait(false);
+                    var upsert = await Bucket.UpsertAsync(id, item, item.Timeout).ConfigureAwait(false);
                     if (!upsert.Success)
                     {
                         LogAndOrThrow(upsert, id);
@@ -155,7 +159,7 @@ namespace Couchbase.AspNet.Session
                 item.Locked = false;
                 item.LockId = 0;
 
-                var upsert = await Bucket.UpsertAsync(id, item).ConfigureAwait(false);
+                var upsert = await Bucket.UpsertAsync(id, item, item.Timeout).ConfigureAwait(false);
                 if (!upsert.Success)
                 {
                     LogAndOrThrow(upsert, id);
