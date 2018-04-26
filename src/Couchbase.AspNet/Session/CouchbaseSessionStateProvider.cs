@@ -21,6 +21,7 @@ namespace Couchbase.AspNet.Session
         public bool ThrowOnError { get; set; }
         public string Prefix { get; set; }
         public string BucketName { get; set; }
+        public int? TimeOut { get; set; }
         private SessionStateSection Config { get; set; }
 
         public override void Initialize(string name, NameValueCollection config)
@@ -106,13 +107,14 @@ namespace Couchbase.AspNet.Session
             _log.TraceFormat("GetSessionStoreItem called for item {0} with lockId {1}.", id, lockId);
 
             if (id == null) return null;
+            var sessionId = this.PrefixIdentifier(id);
 
             /*
              * If no session item data is found at the data store, the GetItemExclusive method sets the locked output parameter to
              * false and returns null. This causes SessionStateModule to call the CreateNewStoreData method to create a new
              * SessionStateStoreData object for the request.
              */
-            var sessionData = Bucket.Get<SessionStateItem>(id);
+            var sessionData = Bucket.Get<SessionStateItem>(sessionId);
             if (sessionData.Status == ResponseStatus.KeyNotFound)
             {
                 lockAge = TimeSpan.Zero;
@@ -161,10 +163,10 @@ namespace Couchbase.AspNet.Session
                 }
 
                 if (!lockRecord) return item;
-                var upsert = Bucket.Upsert(id, sessionData.Value, Config.Timeout);
+                var upsert = Bucket.Upsert(sessionId, sessionData.Value, Config.Timeout);
                 if (!upsert.Success)
                 {
-                    LogAndOrThrow(upsert, id);
+                    LogAndOrThrow(upsert, sessionId);
                 }
             }
             else
@@ -199,8 +201,9 @@ namespace Couchbase.AspNet.Session
          * */
         public override void ReleaseItemExclusive(HttpContext context, string id, object lockId)
         {
-            _log.TraceFormat("ReleaseItemExclusive called for item {0} with lockId {1}.", id, lockId);
-            var original = Bucket.Get<SessionStateItem>(id);
+            var sessionId = this.PrefixIdentifier(id);
+            _log.TraceFormat("ReleaseItemExclusive called for item {0} with lockId {1}.", sessionId, lockId);
+            var original = Bucket.Get<SessionStateItem>(sessionId);
             var item = original.Value;
             if (original.Success && item.LockId != (uint)lockId)
             {
@@ -209,14 +212,14 @@ namespace Couchbase.AspNet.Session
 
             item.Locked = false;
             item.Expires = DateTime.UtcNow.AddMinutes(Config.Timeout.TotalMinutes);
-            item.SessionId = id;
+            item.SessionId = sessionId;
             item.ApplicationName = ApplicationName;
             item.LockId = (uint)lockId;
 
-            var upsert = Bucket.Upsert(id, item, Config.Timeout);
+            var upsert = Bucket.Upsert(sessionId, item, Config.Timeout);
             if (!upsert.Success)
             {
-                LogAndOrThrow(upsert, id);
+                LogAndOrThrow(upsert, sessionId);
             }
         }
 
@@ -235,8 +238,9 @@ namespace Couchbase.AspNet.Session
         public override void SetAndReleaseItemExclusive(HttpContext context, string id, SessionStateStoreData item, object lockId,
             bool newItem)
         {
+            var sessionId = this.PrefixIdentifier(id);
             _log.Trace("SetAndReleaseItemExclusive called.");
-            var original = Bucket.Get<SessionStateItem>(id);
+            var original = Bucket.Get<SessionStateItem>(sessionId);
             if (original.Success && original.Value.LockId != (uint)lockId)
             {
                 return;
@@ -245,18 +249,18 @@ namespace Couchbase.AspNet.Session
             if (newItem)
             {
                 var expires = DateTime.UtcNow.AddMinutes(item.Timeout);
-                var result = Bucket.Insert(id, new SessionStateItem
+                var result = Bucket.Insert(sessionId, new SessionStateItem
                 {
                     ApplicationName = ApplicationName,
                     Expires = expires,
-                    SessionId = id,
+                    SessionId = sessionId,
                     SessionItems = Serialize(item.Items),
                     Locked = false
                 }, TimeSpan.FromMinutes(item.Timeout));
 
                 if (!result.Success)
                 {
-                    LogAndOrThrow(result, id);
+                    LogAndOrThrow(result, sessionId);
                 }
             }
             else
@@ -265,7 +269,7 @@ namespace Couchbase.AspNet.Session
                 entry.Expires  = DateTime.UtcNow.AddMinutes(Config.Timeout.TotalMinutes);
                 entry.SessionItems = Serialize(item.Items);
                 entry.Locked = false;
-                entry.SessionId = id;
+                entry.SessionId = sessionId;
                 entry.ApplicationName = ApplicationName;
                 entry.LockId = (uint)lockId;
                 entry.Actions = SessionStateActions.None;
@@ -273,13 +277,13 @@ namespace Couchbase.AspNet.Session
                 var updated = Bucket.Upsert(new Document<SessionStateItem>
                 {
                     Content = entry,
-                    Id = id,
+                    Id = sessionId,
                     Expiry = (uint)Config.Timeout.TotalMilliseconds
                 }, TimeSpan.FromMinutes(item.Timeout));
 
                 if (!updated.Success)
                 {
-                    LogAndOrThrow(updated, id);
+                    LogAndOrThrow(updated, sessionId);
                 }
             }
         }
@@ -305,42 +309,44 @@ namespace Couchbase.AspNet.Session
 
         public override void RemoveItem(HttpContext context, string id, object lockId, SessionStateStoreData item)
         {
-            _log.TraceFormat("Remove called for item {0} with lockId {1}.", id, lockId);
-            var result = Bucket.Get<SessionStateItem>(id);
+            var sessionId = this.PrefixIdentifier(id);
+            _log.TraceFormat("Remove called for item {0} with lockId {1}.", sessionId, lockId);
+            var result = Bucket.Get<SessionStateItem>(sessionId);
             if (result.Success)
             {
                 var entry = result.Value;
                 if (entry.LockId == (uint) lockId)
                 {
-                    var deleted = Bucket.Remove(id);
+                    var deleted = Bucket.Remove(sessionId);
                     if (deleted.Success) return;
-                    LogAndOrThrow(deleted, id);
+                    LogAndOrThrow(deleted, sessionId);
                 }
             }
             else
             {
-                LogAndOrThrow(result, id);
+                LogAndOrThrow(result, sessionId);
             }
         }
 
         public override void ResetItemTimeout(HttpContext context, string id)
         {
-            _log.TraceFormat("ResetItemTimeout called for item {0}.", id);
-            var result = Bucket.Get<SessionStateItem>(id);
+            var sessionId = this.PrefixIdentifier(id);
+            _log.TraceFormat("ResetItemTimeout called for item {0}.", sessionId);
+            var result = Bucket.Get<SessionStateItem>(sessionId);
             if (result.Success)
             {
                 var item = result.Value;
                 item.Timeout = Config.Timeout;
-                item.SessionId = id;
+                item.SessionId = sessionId;
                 item.ApplicationName = ApplicationName;
 
-                var updated = Bucket.Upsert(id, item, Config.Timeout);
+                var updated = Bucket.Upsert(sessionId, item, Config.Timeout);
                 if (updated.Success) return;
-                LogAndOrThrow(updated, id);
+                LogAndOrThrow(updated, sessionId);
             }
             else
             {
-                LogAndOrThrow(result, id);
+                LogAndOrThrow(result, sessionId);
             }
         }
 
@@ -377,24 +383,26 @@ namespace Couchbase.AspNet.Session
          */
         public override void CreateUninitializedItem(HttpContext context, string id, int timeout)
         {
-            _log.TraceFormat("CreateUninitializedItem called for item {0}.", id);
+            var sessionId = this.PrefixIdentifier(id);
             try
             {
+                _log.TraceFormat("CreateUninitializedItem called for item {0}.", sessionId);
+
                 var expires = DateTime.UtcNow.AddMinutes(timeout);
-                var result = Bucket.Insert(id, new SessionStateItem
+                var result = Bucket.Insert(sessionId, new SessionStateItem
                 {
                     ApplicationName = ApplicationName,
                     Expires = expires,
-                    SessionId = id,
+                    SessionId = sessionId,
                     Actions = SessionStateActions.InitializeItem
                 }, TimeSpan.FromMinutes(timeout));
 
                 if (result.Success) return;
-                LogAndOrThrow(result, id);
+                LogAndOrThrow(result, sessionId);
             }
             catch (Exception e)
             {
-                LogAndOrThrow(e, id);
+                LogAndOrThrow(e, sessionId);
             }
         }
 

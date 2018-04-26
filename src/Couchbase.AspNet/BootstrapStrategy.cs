@@ -1,7 +1,7 @@
 ﻿
 using Couchbase.Configuration.Client.Providers;
 
-namespace Couchbase.AspNet.Caching
+namespace Couchbase.AspNet
 {
     /// <summary>
     /// The specified configuration strategy to use for bootstrapping the underlying Couchbase SDK.

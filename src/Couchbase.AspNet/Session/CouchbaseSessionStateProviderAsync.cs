@@ -8,7 +8,6 @@ using System.Web;
 using System.Web.Configuration;
 using System.Web.SessionState;
 using Common.Logging;
-using Couchbase.AspNet.Caching;
 using Couchbase.Core;
 using Couchbase.IO;
 using Microsoft.AspNet.SessionState;
@@ -25,8 +24,6 @@ namespace Couchbase.AspNet.Session
         public string BucketName { get; set; }
         internal ILog Log => LogManager.GetLogger<CouchbaseSessionStateProvider>();
         private SessionStateSection Config { get; set; }
-        public int? TimeOut { get; set; }
-
 
         public override void Initialize(string name, NameValueCollection config)
         {
@@ -39,7 +36,6 @@ namespace Couchbase.AspNet.Session
 
                 var bootStapper = new BootStrapper();
                 bootStapper.Bootstrap(name, config, this);
-                TimeOut =  ProviderHelper.GetAndRemoveAsInt(config, "timeout", false);
             }
         }
 
@@ -53,26 +49,27 @@ namespace Couchbase.AspNet.Session
 
         public override async Task CreateUninitializedItemAsync(HttpContextBase context, string id, int timeout, CancellationToken cancellationToken)
         {
-            Log.TraceFormat("CreateUninitializedItem called for item {0}.", id);
+            var sessionId = this.PrefixIdentifier(id);
+            Log.TraceFormat("CreateUninitializedItem called for item {0}.", sessionId);
             try
             {
-                var sessionTimeout = new TimeSpan(0, timeout, 0);
+                var sessionTimeout = TimeSpan.FromMinutes(timeout);
                 var expires = DateTime.UtcNow.AddMinutes(timeout);
-                var result = await Bucket.InsertAsync(id, new SessionStateItem
+                var result = await Bucket.InsertAsync(this.PrefixIdentifier(sessionId), new SessionStateItem
                 {
                     ApplicationName = ApplicationName,
                     Expires = expires,
-                    SessionId = id,
+                    SessionId = sessionId,
                     Actions = SessionStateActions.InitializeItem,
                     Timeout = sessionTimeout
                 }, sessionTimeout).ConfigureAwait(false);
 
                 if (result.Success) return;
-                LogAndOrThrow(result, id);
+                LogAndOrThrow(result, sessionId);
             }
             catch (Exception e)
             {
-                LogAndOrThrow(e, id);
+                LogAndOrThrow(e, sessionId);
             }
         }
 
@@ -99,7 +96,11 @@ namespace Couchbase.AspNet.Session
         public async Task<GetItemResult> GetItemFromStoreAsync(HttpContextBase context, string id, CancellationToken cancellationToken, bool exclusive)
         {
             if (id == null) return null;
-            var get = await Bucket.GetAsync<SessionStateItem>(id).ConfigureAwait(false);
+            var sessionId = this.PrefixIdentifier(id);
+
+            Log.TraceFormat("GetItemFromStoreAsync called for item {0}.", sessionId);
+
+            var get = await Bucket.GetAsync<SessionStateItem>(sessionId).ConfigureAwait(false);
             if (get.Status == ResponseStatus.KeyNotFound)
             {
                 return null;
@@ -129,10 +130,10 @@ namespace Couchbase.AspNet.Session
                 if (exclusive)
                 {
                     item.Locked = true;
-                    var upsert = await Bucket.UpsertAsync(id, item, item.Timeout).ConfigureAwait(false);
+                    var upsert = await Bucket.UpsertAsync(sessionId, item, item.Timeout).ConfigureAwait(false);
                     if (!upsert.Success)
                     {
-                        LogAndOrThrow(upsert, id);
+                        LogAndOrThrow(upsert, sessionId);
                     }
                 }
             }
@@ -146,56 +147,60 @@ namespace Couchbase.AspNet.Session
 
         public override async Task ReleaseItemExclusiveAsync(HttpContextBase context, string id, object lockId, CancellationToken cancellationToken)
         {
-            if (id == null)
-            {
-                throw new ArgumentNullException(nameof(id));
-            }
-
-            var get = await Bucket.GetAsync<SessionStateItem>(id).ConfigureAwait(false);
+            var sessionId = this.PrefixIdentifier(id);
+            Log.TraceFormat("ReleaseItemExclusiveAsync called for item {0} with lockid {1}.", sessionId, lockId);
+            var get = await Bucket.GetAsync<SessionStateItem>(sessionId).ConfigureAwait(false);
             var item = get.Value;
+
 
             if (get.Success && item != null && lockId != null && (uint) lockId == item.LockId)
             {
                 item.Locked = false;
                 item.LockId = 0;
 
-                var upsert = await Bucket.UpsertAsync(id, item, item.Timeout).ConfigureAwait(false);
+                var upsert = await Bucket.UpsertAsync(sessionId, item, item.Timeout).ConfigureAwait(false);
                 if (!upsert.Success)
                 {
-                    LogAndOrThrow(upsert, id);
+                    LogAndOrThrow(upsert, sessionId);
                 }
             }
             else
             {
-                LogAndOrThrow(get, id);
+                LogAndOrThrow(get, sessionId);
             }
         }
 
         public override async Task RemoveItemAsync(HttpContextBase context, string id, object lockId, SessionStateStoreData item,
             CancellationToken cancellationToken)
         {
-            var removed = await Bucket.RemoveAsync(id).ConfigureAwait(false);
+            var sessionId = this.PrefixIdentifier(id);
+            Log.TraceFormat("RemoveItemAsync called for item {0} with lockid {1}.", sessionId, lockId);
+            var removed = await Bucket.RemoveAsync(sessionId).ConfigureAwait(false);
             if (!removed.Success)
             {
-                LogAndOrThrow(removed, id);
+                LogAndOrThrow(removed, sessionId);
             }
         }
 
         public override async Task ResetItemTimeoutAsync(HttpContextBase context, string id, CancellationToken cancellationToken)
         {
-            var touched = await Bucket.TouchAsync(id, Config.Timeout).ConfigureAwait(false);
+            var sessionId = this.PrefixIdentifier(id);
+            Log.TraceFormat("ResetItemTimeoutAsync called for item {0}.", sessionId);
+            var touched = await Bucket.TouchAsync(sessionId, Config.Timeout).ConfigureAwait(false);
             if (!touched.Success)
             {
-                LogAndOrThrow(touched, id);
+                LogAndOrThrow(touched, sessionId);
             }
         }
 
         public override async Task SetAndReleaseItemExclusiveAsync(HttpContextBase context, string id, SessionStateStoreData item, object lockId,
             bool newItem, CancellationToken cancellationToken)
         {
+            var sessionId = this.PrefixIdentifier(id);
+            Log.TraceFormat("SetAndReleaseItemExclusiveAsync called for item {0}.", sessionId);
             if (newItem)
             {
-                var insert = await Bucket.InsertAsync(id, new SessionStateItem
+                var insert = await Bucket.InsertAsync(sessionId, new SessionStateItem
                 {
                     Actions = SessionStateActions.None,
                     LockId = (uint?) lockId ?? 0,
@@ -204,12 +209,12 @@ namespace Couchbase.AspNet.Session
 
                 if (!insert.Success)
                 {
-                    LogAndOrThrow(insert, id);
+                    LogAndOrThrow(insert, sessionId);
                 }
             }
             else
             {
-                var upsert = await Bucket.UpsertAsync(id, new SessionStateItem
+                var upsert = await Bucket.UpsertAsync(sessionId, new SessionStateItem
                 {
                     LockId = (uint?)lockId ?? 0,
                     Actions = SessionStateActions.None,
@@ -217,7 +222,7 @@ namespace Couchbase.AspNet.Session
                 }).ConfigureAwait(false);
                 if (!upsert.Success)
                 {
-                    LogAndOrThrow(upsert, id);
+                    LogAndOrThrow(upsert, sessionId);
                 }
             }
 
