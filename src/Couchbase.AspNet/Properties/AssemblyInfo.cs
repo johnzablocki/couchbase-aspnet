@@ -11,3 +11,4 @@ using System.Runtime.InteropServices;
 [assembly: Guid("004c7e42-db04-4e13-8a2f-838fc6769163")]
 
 [assembly: InternalsVisibleTo("Couchbase.AspNet.UnitTests")]
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

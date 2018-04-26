@@ -14,6 +14,14 @@ namespace Couchbase.AspNet
 
         public void Bootstrap(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseWebProvider provider)
         {
+            var prefix = ProviderHelper.GetAndRemove(config, "prefix", false);
+            var bucket = ProviderHelper.GetAndRemove(config, "bucket", true);
+            var throwOnError = ProviderHelper.GetAndRemoveAsBool(config, "throwOnError", false);
+
+            provider.ThrowOnError = throwOnError ?? false;
+            provider.Prefix = prefix;
+            provider.BucketName = bucket;
+
             if (Enum.TryParse(ProviderHelper.GetAndRemove(config, "bootstrapStrategy", true),
                 true, out BootstrapStrategy configStrategy))
             {
@@ -41,24 +49,14 @@ namespace Couchbase.AspNet
 
         private void ConfigureManually(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseWebProvider provider)
         {
-            var prefix = ProviderHelper.GetAndRemove(config, "prefix", false);
-            var bucket = ProviderHelper.GetAndRemove(config, "bucket", true);
-            var throwOnError = ProviderHelper.GetAndRemoveAsBool(config, "throwOnError", false);
-
-            provider.ThrowOnError = throwOnError ?? false;
-            provider.Prefix = prefix;
-            provider.BucketName = bucket;
-
             _log.Debug("Creating bucket: " + provider.BucketName);
             provider.Bucket = MultiCluster.GetBucket(name, provider.BucketName);
         }
 
         private void ConfigureInline(string name, System.Collections.Specialized.NameValueCollection config, ICouchbaseWebProvider provider)
         {
-            var prefix = ProviderHelper.GetAndRemove(config, "prefix", false);
             var servers = ProviderHelper.GetAndRemoveAsArray(config, "servers", ';', false).Select(x => new Uri(x)).ToList();
             var useSsl = ProviderHelper.GetAndRemoveAsBool(config, "useSsl", false);
-            var bucket = ProviderHelper.GetAndRemove(config, "bucket", true);
             var operationLifespan = ProviderHelper.GetAndRemoveAsUInt(config, "operationLifespan", false);
             var sendTimeout = ProviderHelper.GetAndRemoveAsInt(config, "sendTimeout", false);
             var connectTimeout = ProviderHelper.GetAndRemoveAsInt(config, "connectTimeout", false);
@@ -66,11 +64,6 @@ namespace Couchbase.AspNet
             var maxPoolSize = ProviderHelper.GetAndRemoveAsInt(config, "maxPoolSize", false);
             var username = ProviderHelper.GetAndRemove(config, "username", false);
             var password = ProviderHelper.GetAndRemove(config, "password", false);
-            var throwOnError = ProviderHelper.GetAndRemoveAsBool(config, "throwOnError", false);
-
-            provider.ThrowOnError = throwOnError ?? false;
-            provider.Prefix = prefix;
-            provider.BucketName = bucket;
 
             var clientConfig = new ClientConfiguration
             {
@@ -80,9 +73,9 @@ namespace Couchbase.AspNet
                 BucketConfigs = new Dictionary<string, BucketConfiguration>
                 {
                     {
-                        bucket, new BucketConfiguration
+                        provider.BucketName, new BucketConfiguration
                         {
-                            BucketName = bucket,
+                            BucketName = provider.BucketName,
                             PoolConfiguration = new PoolConfiguration
                             {
                                 MinSize = minPoolSize ?? PoolConfiguration.Defaults.MinSize,
@@ -101,7 +94,7 @@ namespace Couchbase.AspNet
                 if (!string.IsNullOrWhiteSpace(password))
                 {
                     //assume pre-RBAC or CB < 5.0 if username is empty
-                    authenticator = new ClassicAuthenticator(bucket, password);
+                    authenticator = new ClassicAuthenticator(provider.BucketName, password);
                 }
             }
             else
@@ -123,9 +116,6 @@ namespace Couchbase.AspNet
             //configure from the CouchbaseClientSection in Web.Config
             MultiCluster.Configure(name, config);
 
-            // Create the bucket based off the name provided in the config
-            provider.BucketName = ProviderHelper.GetAndRemove(config, "bucket", false);
-
             _log.Debug("Creating bucket: " + provider.BucketName);
             provider.Bucket = MultiCluster.GetBucket(name, provider.BucketName);
         }
@@ -134,21 +124,21 @@ namespace Couchbase.AspNet
 
 #region [ License information          ]
 /* ************************************************************
- * 
+ *
  *    @author Couchbase <info@couchbase.com>
  *    @copyright 2017 Couchbase, Inc.
- *    
+ *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
  *    You may obtain a copy of the License at
- *    
+ *
  *        http://www.apache.org/licenses/LICENSE-2.0
- *    
+ *
  *    Unless required by applicable law or agreed to in writing, software
  *    distributed under the License is distributed on an "AS IS" BASIS,
  *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
- *    
+ *
  * ************************************************************/
 #endregion
