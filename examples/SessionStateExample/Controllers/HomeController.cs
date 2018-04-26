@@ -10,22 +10,21 @@ namespace SessionStateExample.Controllers
     {
         public ActionResult Index()
         {
-            Session["mySession"] = DateTime.Now;
             return View();
         }
 
-        public ActionResult About()
+        public ActionResult StartSession()
         {
-            ViewBag.Message = "Your application description page." + Session["mySession"];
+            Session["User"] = "Session started for John Doe!";
 
-            return View();
+            return View("Index");
         }
 
-        public ActionResult Contact()
+        public ActionResult ClearSession()
         {
-            ViewBag.Message = "Your contact page.";
+            Session.Clear();
 
-            return View();
+            return View("Index");
         }
     }
 }
