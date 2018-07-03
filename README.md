@@ -30,15 +30,15 @@ An output cache stores the output of pages, controls and HTTP responses. The def
 To use the `CouchbaseOutputCacheProvider` you will need to either build from source or use the NuGet package once it's available (a beta version for 3.0 will be released shortly). Once you have the dependency resolved, you will configure the custom OutputCacheProvider just like you do any other custom output cache provider in your Web.Config file:
 ```XML
 <caching>
-<outputCache defaultProvider="couchbase-cache">
-<providers>
-	<add name="couchbase-cache" 
-			type="Couchbase.AspNet.Caching.CouchbaseCacheProviderAsync, Couchbase.AspNet, Version=1.0.0.0, Culture=neutral" 
-			bucket="default" 
-			bootstrapStrategy="section">
-		</add>
-</providers>
-</outputCache>
+	<outputCache defaultProvider="couchbase-cache">
+		<providers>
+			<add name="couchbase-cache" 
+					type="Couchbase.AspNet.Caching.CouchbaseCacheProviderAsync, Couchbase.AspNet, Version=1.0.0.0, Culture=neutral" 
+					bucket="default" 
+					bootstrapStrategy="section">
+				</add>
+		</providers>
+	</outputCache>
 </caching>
 ```
 In this example, we are using a `bootstrapStrategy` of `section`, which means we will bootstrap the Couchbase SDK that the Cache is using from a Web.Config section (note that there are three bootstrapping strategies in 3.0: `inline`, `section` and `manual` - more on that later):
