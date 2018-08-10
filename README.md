@@ -9,7 +9,7 @@ This library provides infrastructure support for using [Couchbase Server](http:/
 - To request a feature or report a bug use [Jira](https://issues.couchbase.com/projects/CBASP).
 - Gitter home is here ^^^
 - Couchbase Forums for help is [here](https://forums.couchbase.com/c/net-sdk).
-- Current release on [NuGet](https://www.nuget.org/packages/CouchbaseAspNet/2.0.0-beta3).
+- Current release on [NuGet](https://www.nuget.org/packages/CouchbaseAspNet/3.0.0).
 
 ## New Features for 3.0 ##
 
@@ -20,9 +20,7 @@ This library provides infrastructure support for using [Couchbase Server](http:/
 - Provider level logging
 - Role Based Access Control (RBAC) for Couchbase Server 5.0
 
-**Note: this branch is new development for v3.0 ~~and unstable~~ is getting more stable atm - 2.0 branch is stable.**
-
-## Caching and Session Providers for .NET Full Framework 4.5 and 4.6.2 ##
+## Caching and Session Providers for .NET Full Framework 4.5.2 and 4.6.2 ##
 
 ### Couchbase Output Cache ###
 An output cache stores the output of pages, controls and HTTP responses. The default implementation in ASP.NET is to store in-memory on the server, which forces the front-end application (Web) servers to use more resources. The CouchbaseOutputCacheProvider is a distributed cache provider, which allows you to override the default ASP.NET Output Cache with a Couchbase-based implementation.
