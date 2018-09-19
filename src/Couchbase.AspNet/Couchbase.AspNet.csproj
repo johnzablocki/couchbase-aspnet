@@ -48,13 +48,8 @@
     <DefineConstants>$(DefineConstants);net462</DefineConstants>
   </PropertyGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net46' ">
-    <PackageReference Include="Microsoft.AspNet.WebApi.WebHost" Version="4.0.20505" />
-  </ItemGroup>
-
   <ItemGroup Condition=" '$(TargetFramework)' == 'net462' ">
     <PackageReference Include="Microsoft.AspNet.SessionState.SessionStateModule" version="1.1.0" />
-    <PackageReference Include="Microsoft.AspNet.WebApi.WebHost" Version="5.2.4" />
     <PackageReference Include="Microsoft.CSharp" Version="4.4.1" />
   </ItemGroup>
 </Project>
