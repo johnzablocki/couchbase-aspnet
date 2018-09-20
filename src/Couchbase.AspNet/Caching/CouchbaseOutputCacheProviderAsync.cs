@@ -113,7 +113,7 @@ namespace Couchbase.AspNet.Caching
         public override async Task<object> GetAsync(string key)
         {
             _log.Debug("Cache.GetAsync(" + key + ")");
-            CheckKey(key);
+            CheckKey(ref key);
 
             try
             {
@@ -155,7 +155,7 @@ namespace Couchbase.AspNet.Caching
         public override async Task<object> AddAsync(string key, object entry, DateTime utcExpiry)
         {
             _log.Debug("Cache.AddAsync(" + key + ", " + entry + ", " + utcExpiry + ")");
-            CheckKey(key);
+            CheckKey(ref key);
 
             try
             {
@@ -194,7 +194,7 @@ namespace Couchbase.AspNet.Caching
         public override async Task SetAsync(string key, object entry, DateTime utcExpiry)
         {
             _log.Debug("Cache.SetAsync(" + key + ", " + entry + ", " + utcExpiry + ")");
-            CheckKey(key);
+            CheckKey(ref key);
 
             try
             {
@@ -216,7 +216,7 @@ namespace Couchbase.AspNet.Caching
         /// <param name="key">The unique identifier for the entry to remove from the output cache.</param>
         public override async Task RemoveAsync(string key)
         {
-            CheckKey(key);
+            CheckKey(ref key);
 
             try
             {
@@ -266,19 +266,23 @@ namespace Couchbase.AspNet.Caching
                 throw new InvalidOperationException(result.Status.ToString());
             }
         }
-
         /// <summary>
         /// Checks the key to ensure its not null, empty or a blank space, throwing an exception
         /// if <see cref="ThrowOnError"/> is <c>true</c> and logging the issue as WARN.
         /// </summary>
         /// <param name="key">The key.</param>
         /// <exception cref="ArgumentException"></exception>
-        private void CheckKey(string key)
+        private void CheckKey(ref string key)
         {
             if (string.IsNullOrWhiteSpace(key))
             {
                 if (ThrowOnError) throw new ArgumentException(EmptyKeyMessage);
                 _log.Warn(EmptyKeyMessage);
+            } 
+
+            if (key != null && (Prefix != null && !key.StartsWith(Prefix)))
+            {
+                key = string.Concat(Prefix, "_", key);
             }
         }
     }

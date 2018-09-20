@@ -14,6 +14,7 @@ namespace Couchbase.AspNet.Session
 {
     public class CouchbaseSessionStateProvider : SessionStateStoreProviderBase, ICouchbaseWebProvider
     {
+        private const string EmptyKeyMessage = "'key' must be non-null, not empty or whitespace.";
         private readonly object _syncObj = new object();
         private readonly ILog _log = LogManager.GetLogger<CouchbaseSessionStateProvider>();
         public IBucket Bucket { get; set; }
@@ -105,16 +106,14 @@ namespace Couchbase.AspNet.Session
             actions = SessionStateActions.None;
 
             _log.TraceFormat("GetSessionStoreItem called for item {0} with lockId {1}.", id, lockId);
-
-            if (id == null) return null;
-            var sessionId = this.PrefixIdentifier(id);
+            CheckKey(ref id);
 
             /*
              * If no session item data is found at the data store, the GetItemExclusive method sets the locked output parameter to
              * false and returns null. This causes SessionStateModule to call the CreateNewStoreData method to create a new
              * SessionStateStoreData object for the request.
              */
-            var sessionData = Bucket.Get<SessionStateItem>(sessionId);
+            var sessionData = Bucket.Get<SessionStateItem>(id);
             if (sessionData.Status == ResponseStatus.KeyNotFound)
             {
                 lockAge = TimeSpan.Zero;
@@ -163,10 +162,10 @@ namespace Couchbase.AspNet.Session
                 }
 
                 if (!lockRecord) return item;
-                var upsert = Bucket.Upsert(sessionId, sessionData.Value, Config.Timeout);
+                var upsert = Bucket.Upsert(id, sessionData.Value, Config.Timeout);
                 if (!upsert.Success)
                 {
-                    LogAndOrThrow(upsert, sessionId);
+                    LogAndOrThrow(upsert, id);
                 }
             }
             else
@@ -201,9 +200,10 @@ namespace Couchbase.AspNet.Session
          * */
         public override void ReleaseItemExclusive(HttpContext context, string id, object lockId)
         {
-            var sessionId = this.PrefixIdentifier(id);
-            _log.TraceFormat("ReleaseItemExclusive called for item {0} with lockId {1}.", sessionId, lockId);
-            var original = Bucket.Get<SessionStateItem>(sessionId);
+            CheckKey(ref id);
+            _log.TraceFormat("ReleaseItemExclusive called for item {0} with lockId {1}.", id, lockId);
+
+            var original = Bucket.Get<SessionStateItem>(id);
             var item = original.Value;
             if (original.Success && item.LockId != (uint)lockId)
             {
@@ -212,14 +212,14 @@ namespace Couchbase.AspNet.Session
 
             item.Locked = false;
             item.Expires = DateTime.UtcNow.AddMinutes(Config.Timeout.TotalMinutes);
-            item.SessionId = sessionId;
+            item.SessionId = id;
             item.ApplicationName = ApplicationName;
             item.LockId = (uint)lockId;
 
-            var upsert = Bucket.Upsert(sessionId, item, Config.Timeout);
+            var upsert = Bucket.Upsert(id, item, Config.Timeout);
             if (!upsert.Success)
             {
-                LogAndOrThrow(upsert, sessionId);
+                LogAndOrThrow(upsert, id);
             }
         }
 
@@ -238,9 +238,10 @@ namespace Couchbase.AspNet.Session
         public override void SetAndReleaseItemExclusive(HttpContext context, string id, SessionStateStoreData item, object lockId,
             bool newItem)
         {
-            var sessionId = this.PrefixIdentifier(id);
+            CheckKey(ref id);
             _log.Trace("SetAndReleaseItemExclusive called.");
-            var original = Bucket.Get<SessionStateItem>(sessionId);
+
+            var original = Bucket.Get<SessionStateItem>(id);
             if (original.Success && original.Value.LockId != (uint)lockId)
             {
                 return;
@@ -249,18 +250,18 @@ namespace Couchbase.AspNet.Session
             if (newItem)
             {
                 var expires = DateTime.UtcNow.AddMinutes(item.Timeout);
-                var result = Bucket.Insert(sessionId, new SessionStateItem
+                var result = Bucket.Insert(id, new SessionStateItem
                 {
                     ApplicationName = ApplicationName,
                     Expires = expires,
-                    SessionId = sessionId,
+                    SessionId = id,
                     SessionItems = Serialize(item.Items),
                     Locked = false
                 }, TimeSpan.FromMinutes(item.Timeout));
 
                 if (!result.Success)
                 {
-                    LogAndOrThrow(result, sessionId);
+                    LogAndOrThrow(result, id);
                 }
             }
             else
@@ -269,7 +270,7 @@ namespace Couchbase.AspNet.Session
                 entry.Expires  = DateTime.UtcNow.AddMinutes(Config.Timeout.TotalMinutes);
                 entry.SessionItems = Serialize(item.Items);
                 entry.Locked = false;
-                entry.SessionId = sessionId;
+                entry.SessionId = id;
                 entry.ApplicationName = ApplicationName;
                 entry.LockId = (uint)lockId;
                 entry.Actions = SessionStateActions.None;
@@ -277,13 +278,13 @@ namespace Couchbase.AspNet.Session
                 var updated = Bucket.Upsert(new Document<SessionStateItem>
                 {
                     Content = entry,
-                    Id = sessionId,
+                    Id = id,
                     Expiry = (uint)Config.Timeout.TotalMilliseconds
                 }, TimeSpan.FromMinutes(item.Timeout));
 
                 if (!updated.Success)
                 {
-                    LogAndOrThrow(updated, sessionId);
+                    LogAndOrThrow(updated, id);
                 }
             }
         }
@@ -309,44 +310,46 @@ namespace Couchbase.AspNet.Session
 
         public override void RemoveItem(HttpContext context, string id, object lockId, SessionStateStoreData item)
         {
-            var sessionId = this.PrefixIdentifier(id);
-            _log.TraceFormat("Remove called for item {0} with lockId {1}.", sessionId, lockId);
-            var result = Bucket.Get<SessionStateItem>(sessionId);
+            CheckKey(ref id);
+            _log.TraceFormat("Remove called for item {0} with lockId {1}.", id, lockId);
+
+            var result = Bucket.Get<SessionStateItem>(id);
             if (result.Success)
             {
                 var entry = result.Value;
                 if (entry.LockId == (uint) lockId)
                 {
-                    var deleted = Bucket.Remove(sessionId);
+                    var deleted = Bucket.Remove(id);
                     if (deleted.Success) return;
-                    LogAndOrThrow(deleted, sessionId);
+                    LogAndOrThrow(deleted, id);
                 }
             }
             else
             {
-                LogAndOrThrow(result, sessionId);
+                LogAndOrThrow(result, id);
             }
         }
 
         public override void ResetItemTimeout(HttpContext context, string id)
         {
-            var sessionId = this.PrefixIdentifier(id);
-            _log.TraceFormat("ResetItemTimeout called for item {0}.", sessionId);
-            var result = Bucket.Get<SessionStateItem>(sessionId);
+            CheckKey(ref id);
+            _log.TraceFormat("ResetItemTimeout called for item {0}.", id);
+
+            var result = Bucket.Get<SessionStateItem>(id);
             if (result.Success)
             {
                 var item = result.Value;
                 item.Timeout = Config.Timeout;
-                item.SessionId = sessionId;
+                item.SessionId = id;
                 item.ApplicationName = ApplicationName;
 
-                var updated = Bucket.Upsert(sessionId, item, Config.Timeout);
+                var updated = Bucket.Upsert(id, item, Config.Timeout);
                 if (updated.Success) return;
-                LogAndOrThrow(updated, sessionId);
+                LogAndOrThrow(updated, id);
             }
             else
             {
-                LogAndOrThrow(result, sessionId);
+                LogAndOrThrow(result, id);
             }
         }
 
@@ -383,26 +386,27 @@ namespace Couchbase.AspNet.Session
          */
         public override void CreateUninitializedItem(HttpContext context, string id, int timeout)
         {
-            var sessionId = this.PrefixIdentifier(id);
+            CheckKey(ref id);
+            
             try
             {
-                _log.TraceFormat("CreateUninitializedItem called for item {0}.", sessionId);
+                _log.TraceFormat("CreateUninitializedItem called for item {0}.", id);
 
                 var expires = DateTime.UtcNow.AddMinutes(timeout);
-                var result = Bucket.Insert(sessionId, new SessionStateItem
+                var result = Bucket.Insert(id, new SessionStateItem
                 {
                     ApplicationName = ApplicationName,
                     Expires = expires,
-                    SessionId = sessionId,
+                    SessionId = id,
                     Actions = SessionStateActions.InitializeItem
                 }, TimeSpan.FromMinutes(timeout));
 
                 if (result.Success) return;
-                LogAndOrThrow(result, sessionId);
+                LogAndOrThrow(result, id);
             }
             catch (Exception e)
             {
-                LogAndOrThrow(e, sessionId);
+                LogAndOrThrow(e, id);
             }
         }
 
@@ -461,6 +465,26 @@ namespace Couchbase.AspNet.Session
             if (ThrowOnError)
             {
                 throw new InvalidOperationException(result.Status.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Checks the key to ensure its not null, empty or a blank space, throwing an exception
+        /// if <see cref="ThrowOnError"/> is <c>true</c> and logging the issue as WARN.
+        /// </summary>
+        /// <param name="key">The key.</param>
+        /// <exception cref="ArgumentException"></exception>
+        private void CheckKey(ref string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                if (ThrowOnError) throw new ArgumentException(EmptyKeyMessage);
+                _log.Warn(EmptyKeyMessage);
+            } 
+
+            if (key != null && (Prefix != null && !key.StartsWith(Prefix)))
+            {
+                key = string.Concat(Prefix, "_", key);
             }
         }
     }
