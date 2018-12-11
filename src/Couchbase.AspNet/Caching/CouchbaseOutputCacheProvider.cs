@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Linq;
 using System.Web.Caching;
 using Common.Logging;
-using Couchbase.Authentication;
-using Couchbase.Configuration.Client;
 using Couchbase.Core;
 using Couchbase.IO;
 
@@ -55,7 +51,7 @@ namespace Couchbase.AspNet.Caching
         public override object Get(string key)
         {
             _log.Debug("Cache.Get(" + key + ")");
-            CheckKey(key);
+            CheckKey(ref key);
 
             try
             {
@@ -97,7 +93,7 @@ namespace Couchbase.AspNet.Caching
          public override object Add(string key, object entry, DateTime utcExpiry)
          {
              _log.Debug("Cache.Add(" + key + ", " + entry + ", " + utcExpiry + ")");
-             CheckKey(key);
+             CheckKey(ref key);
 
              try
              {
@@ -136,7 +132,7 @@ namespace Couchbase.AspNet.Caching
         public override void Set(string key, object entry, DateTime utcExpiry)
         {
             _log.Debug("Cache.Set(" + key + ", " + entry + ", " + utcExpiry + ")");
-            CheckKey(key);
+            CheckKey(ref key);
 
             try
             {
@@ -159,7 +155,7 @@ namespace Couchbase.AspNet.Caching
         public override void Remove(string key)
         {
            _log.Debug("Cache.Remove(" + key + ")");
-            CheckKey(key);
+            CheckKey(ref key);
 
             try
             {
@@ -216,12 +212,17 @@ namespace Couchbase.AspNet.Caching
         /// </summary>
         /// <param name="key">The key.</param>
         /// <exception cref="ArgumentException"></exception>
-        private void CheckKey(string key)
+        private void CheckKey(ref string key)
         {
             if (string.IsNullOrWhiteSpace(key))
             {
                 if (ThrowOnError) throw new ArgumentException(EmptyKeyMessage);
                 _log.Warn(EmptyKeyMessage);
+            } 
+
+            if (key != null && (Prefix != null && !key.StartsWith(Prefix)))
+            {
+                key = string.Concat(Prefix, "_", key);
             }
         }
     }

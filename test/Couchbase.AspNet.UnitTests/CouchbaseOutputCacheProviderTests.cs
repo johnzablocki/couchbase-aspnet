@@ -243,8 +243,7 @@ namespace Couchbase.AspNet.UnitTests
             {
                 provider.Remove("thekey");
             }
-
-            #endregion
         }
+        #endregion
     }
 }
