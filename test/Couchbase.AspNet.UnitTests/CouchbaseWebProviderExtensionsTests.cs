@@ -10,6 +10,7 @@ namespace Couchbase.AspNet.UnitTests
 {
     public class CouchbaseWebProviderExtensionsTests
     {
+        [InlineData("xxx", "xxx-mysession", "xxx-mysession")]
         [InlineData("xxx", "mysession", "xxx-mysession")]
         [InlineData(null, "mysession", "mysession")]
         [Theory]
