@@ -162,6 +162,7 @@ namespace Couchbase.AspNet.Session
                 }
 
                 if (!lockRecord) return item;
+
                 var upsert = Bucket.Upsert(id, sessionData.Value, Config.Timeout);
                 if (!upsert.Success)
                 {
@@ -256,8 +257,9 @@ namespace Couchbase.AspNet.Session
                     Expires = expires,
                     SessionId = id,
                     SessionItems = Serialize(item.Items),
-                    Locked = false
-                }, TimeSpan.FromMinutes(item.Timeout));
+                    Locked = false,
+                    Timeout = Config.Timeout
+                }, Config.Timeout);
 
                 if (!result.Success)
                 {
@@ -280,7 +282,7 @@ namespace Couchbase.AspNet.Session
                     Content = entry,
                     Id = id,
                     Expiry = (uint)Config.Timeout.TotalMilliseconds
-                }, TimeSpan.FromMinutes(item.Timeout));
+                });
 
                 if (!updated.Success)
                 {
