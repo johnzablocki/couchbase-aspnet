@@ -11,6 +11,8 @@ This library provides infrastructure support for using [Couchbase Server](http:/
 - Couchbase Forums for help is [here](https://forums.couchbase.com/c/net-sdk).
 - Current release on [NuGet](https://www.nuget.org/packages/CouchbaseAspNet/3.0.0).
 
+## NOTE: Not supported under Couchbase Enterprise Support Subscriptions! ##
+
 ## New Features for 3.0 ##
 
 - Supports .NET 4.6.0 and 4.6.2 frameworks
