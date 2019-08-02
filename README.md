@@ -4,14 +4,12 @@ Couchbase ASP.NET Integration 3.0
 [![Join the chat at https://gitter.im/couchbaselabs/couchbase-aspnet](https://badges.gitter.im/couchbaselabs/couchbase-aspnet.svg)](https://gitter.im/couchbaselabs/couchbase-aspnet?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build status](https://ci.appveyor.com/api/projects/status/7owuw1ofqnp48bcb/branch/master?svg=true)](https://ci.appveyor.com/project/Couchbase/couchbase-aspnet)
 
-This library provides infrastructure support for using [Couchbase Server](http://couchbase.com) and ASP.NET.
+This library provides infrastructure support for using [Couchbase Server](http://couchbase.com) and ASP.NET. While not a officially supported Couchbase project, this repo is actively maintained and monitored. If you happen to find a bug or have any questions, please either create an [issue](https://github.com/couchbaselabs/couchbase-aspnet/issues) or make a post on [forums.couchbase.com](forums.couchbase.com). Additionally, we actively accept contributions!
 
 - To request a feature or report a bug use [Jira](https://issues.couchbase.com/projects/CBASP).
 - Gitter home is here ^^^
 - Couchbase Forums for help is [here](https://forums.couchbase.com/c/net-sdk).
 - Current release on [NuGet](https://www.nuget.org/packages/CouchbaseAspNet/3.0.0).
-
-## NOTE: Not supported under Couchbase Enterprise Support Subscriptions! ##
 
 ## New Features for 3.0 ##
 
